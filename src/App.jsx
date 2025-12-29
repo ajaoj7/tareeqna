@@ -16,18 +16,36 @@ import {
   getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken 
 } from 'firebase/auth';
 
-// --- إعدادات النظام السحابي (Firebase) ---
-// ملاحظة: عند النشر على Vercel، استبدل القيم أدناه ببيانات مشروعك الحقيقية
-const firebaseConfig = {
-  apiKey: "YOUR_FIREBASE_API_KEY",
-  authDomain: "your-project.firebaseapp.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+// --- Configuration Helper ---
+// This safely handles environment variables without crashing in older ES targets
+const getEnv = (key) => {
+  try {
+    // Attempt to access Vite's import.meta.env safely
+    const env = window?.import?.meta?.env || {};
+    return env[key] || "";
+  } catch (e) {
+    return "";
+  }
 };
 
-// محرك التشغيل الذكي: يستخدم إعدادات البيئة إذا توفرت
+// --- Firebase Production Configuration ---
+// Replace the values below with your real Firebase keys in Vercel Environment Variables
+const firebaseConfig = {
+  apiKey: getEnv('VITE_FIREBASE_API_KEY'),
+  authDomain: getEnv('VITE_FIREBASE_AUTH_DOMAIN'),
+  projectId: getEnv('VITE_FIREBASE_PROJECT_ID'),
+  storageBucket: getEnv('VITE_FIREBASE_STORAGE_BUCKET'),
+  messagingSenderId: getEnv('VITE_FIREBASE_MESSAGING_SENDER_ID'),
+  appId: getEnv('VITE_FIREBASE_APP_ID')
+};
+
+// Application Identity
+const appId = "tareeqna_production_jordan_v1";
+
+// Google Maps Key from Environment
+const GOOGLE_MAPS_KEY = getEnv('VITE_GOOGLE_MAPS_API_KEY');
+
+// Initialize Firebase with fallback for development environment
 const finalConfig = typeof __firebase_config !== 'undefined' 
   ? JSON.parse(__firebase_config) 
   : firebaseConfig;
@@ -35,13 +53,6 @@ const finalConfig = typeof __firebase_config !== 'undefined'
 const app = initializeApp(finalConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-
-// معرف التطبيق لضمان تنظيم البيانات (تم تنظيفه لتجنب أخطاء Firebase)
-const appId = "tareeqna_v1_official";
-
-// تعريف مفتاح الخرائط بطريقة تتجنب أخطاء التحليل في بعض بيئات التشغيل
-// عند العمل في مشروع Vite المحلي، يمكنك استخدام import.meta.env.VITE_GOOGLE_MAPS_API_KEY
-const GOOGLE_MAPS_KEY = ""; 
 
 const App = () => {
   const [view, setView] = useState('landing'); 
@@ -54,7 +65,7 @@ const App = () => {
   const [showDonateModal, setShowDonateModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
 
-  // قائمة الرعاة الرسمية (CSR)
+  // National Sponsors List
   const sponsors = useMemo(() => [
     { id: 'sp1', name: 'البنك العربي', logo: 'https://api.dicebear.com/7.x/initials/svg?seed=AB', repairs: 52, donated: 150000, color: 'bg-red-600' },
     { id: 'sp2', name: 'زين الأردن', logo: 'https://api.dicebear.com/7.x/initials/svg?seed=Zain', repairs: 41, donated: 120000, color: 'bg-black' },
@@ -63,40 +74,34 @@ const App = () => {
     { id: 'sp5', name: 'الملكية الأردنية', logo: 'https://api.dicebear.com/7.x/initials/svg?seed=RJ', repairs: 22, donated: 55000, color: 'bg-slate-900' }
   ], []);
 
-  // 1. إدارة الهوية الرقمية
+  // Identity and Real-time Data Management
   useEffect(() => {
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (e) { 
-        console.error("Auth Failed", e); 
+    const unsubAuth = onAuthStateChanged(auth, async (u) => { 
+      if (!u) {
+        try { await signInAnonymously(auth); } catch(e) { console.error("Auth Failure", e); }
       }
-    };
-    initAuth();
-    const unsub = onAuthStateChanged(auth, (u) => { 
       setUser(u); 
       setLoading(false); 
     });
-    return () => unsub();
+    return () => unsubAuth();
   }, []);
 
-  // 2. مزامنة البيانات الحية
   useEffect(() => {
     if (!user) return;
-    const unsubR = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'reports'), (snap) => {
+    const reportsQuery = collection(db, 'artifacts', appId, 'public', 'data', 'reports');
+    const unsubR = onSnapshot(reportsQuery, (snap) => {
       setReports(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)));
     });
-    const unsubD = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'donations'), (snap) => {
+
+    const donationsQuery = collection(db, 'artifacts', appId, 'public', 'data', 'donations');
+    const unsubD = onSnapshot(donationsQuery, (snap) => {
       setDonations(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
+
     return () => { unsubR(); unsubD(); };
   }, [user]);
 
-  const handleDonation = async (details) => {
+  const handleDonationAction = async (details) => {
     if (!user) return;
     try {
       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'donations'), {
@@ -108,32 +113,32 @@ const App = () => {
         if (item) await updateDoc(ref, { collected: (Number(item.collected) || 0) + Number(details.amount) });
       }
       setShowDonateModal(false);
-    } catch (e) { alert("حدث خطأ في معالجة التبرع."); }
+    } catch (e) { alert("حدث خطأ تقني في معالجة التبرع."); }
   };
 
   if (loading) return <LoadingScreen />;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-['Cairo'] text-slate-900 rtl text-right transition-all duration-500" dir="rtl">
-      {/* Header Premium مع الشعار المطور */}
+    <div className="min-h-screen bg-[#F8FAFC] font-['Cairo'] text-slate-900 rtl text-right select-none transition-all duration-500" dir="rtl">
+      {/* Header Premium - Customized Logo Branding */}
       <header className="bg-white/80 backdrop-blur-xl border-b border-slate-100 sticky top-0 z-[60] p-4 flex justify-between items-center shadow-sm">
         <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setView('landing')}>
-          <div className="bg-green-600 p-2.5 rounded-2xl text-white shadow-lg group-hover:scale-110 transition-transform">
-            <TrendingUp size={24} />
+          <div className="bg-green-600 p-2.5 rounded-2xl text-white shadow-lg shadow-green-200 group-hover:scale-110 group-hover:rotate-6 transition-all">
+            <TrendingUp size={24} strokeWidth={2.5} />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tighter leading-none" style={{ letterSpacing: '-0.05em' }}>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tighter leading-none italic" style={{ letterSpacing: '-0.04em' }}>
               طريق<span className="text-green-600">نا</span>
             </h1>
             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Jordan Road Guard</p>
           </div>
         </div>
-        <button onClick={() => setView('leaderboard')} className="p-2.5 bg-amber-50 text-amber-600 rounded-xl border border-amber-100 active:scale-95 transition-all">
+        <button onClick={() => setView('leaderboard')} className="p-2.5 bg-amber-50 text-amber-600 rounded-xl border border-amber-100 hover:bg-amber-100 transition-colors shadow-sm">
           <Trophy size={22}/>
         </button>
       </header>
 
-      {/* Main View Area */}
+      {/* Main Content Area */}
       <main className="max-w-5xl mx-auto pb-44 px-4 md:px-0">
         {view === 'landing' && <LandingView setView={setView} reports={reports} sponsors={sponsors} />}
         {view === 'roads' && <ListView title="بلاغات الشوارع" items={reports} onDonate={(r) => { setSelectedItem({item: r, type: 'road'}); setShowDonateModal(true); }} onInfo={(r) => { setSelectedItem(r); setShowInfoModal(true); }} />}
@@ -143,7 +148,7 @@ const App = () => {
         {view === 'donate' && <DonateUnifiedView reports={reports} onDonate={(item, type) => { setSelectedItem({item, type}); setShowDonateModal(true); }} onInfo={(item) => { setSelectedItem(item); setShowInfoModal(true); }} />}
       </main>
 
-      {/* Navigation */}
+      {/* Floating Modern Navigation */}
       <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-lg bg-slate-900/95 backdrop-blur-2xl rounded-[3rem] p-3 flex justify-around items-center z-[70] shadow-2xl border border-white/10 ring-1 ring-white/5">
         <NavBtn icon={<Home />} label="الرئيسية" active={view === 'landing'} onClick={() => setView('landing')} />
         <NavBtn icon={<MapPin />} label="الشوارع" active={view === 'roads'} onClick={() => setView('roads')} />
@@ -161,44 +166,46 @@ const App = () => {
         <NavBtn icon={<Wallet />} label="تبرع" active={view === 'donate'} onClick={() => setView('donate')} />
       </nav>
 
-      {/* Modals */}
-      {showDonateModal && <DonationPopup item={selectedItem} onClose={() => setShowDonateModal(false)} onConfirm={handleDonation} />}
+      {/* Shared Modals */}
+      {showDonateModal && <DonationPopup item={selectedItem} onClose={() => setShowDonateModal(false)} onConfirm={handleDonationAction} />}
       {showInfoModal && <InfoPopup item={selectedItem} onClose={() => setShowInfoModal(false)} />}
     </div>
   );
 };
 
-// --- Sub-Views ---
+// --- View: Landing Page with Pulsing Green Glow ---
 
 const LandingView = ({ setView, reports, sponsors }) => (
   <div className="py-10 space-y-16 animate-in fade-in duration-1000">
-    {/* Hero Section مع تأثير النبض */}
+    {/* Global Hero with Green Pulse Animation */}
     <section className="bg-slate-900 rounded-[3.5rem] p-10 md:p-16 text-white relative overflow-hidden shadow-2xl border border-white/5">
-      <div className="relative z-10 max-w-2xl space-y-8 text-right">
+      <div className="relative z-10 max-w-2xl space-y-8">
         <div className="inline-flex items-center gap-2 bg-green-500/10 text-green-400 px-4 py-2 rounded-full border border-green-500/20 text-xs font-black uppercase tracking-widest">
-           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.7)]"></div>
-           مبادرة الأردن الرقمية 2030
+           {/* Pulsing indicator */}
+           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_12px_rgba(34,197,94,0.9)]"></div>
+           مبادرة التحول الرقمي الوطني 2030
         </div>
         <h2 className="text-5xl md:text-7xl font-black leading-[1.1] tracking-tighter">معاً نعمر <br/><span className="text-green-500 underline decoration-green-900/50">شوارع الوطن</span></h2>
-        <p className="text-slate-400 text-lg md:text-xl font-medium leading-relaxed max-w-lg">المنصة الرسمية الموثقة لإصلاح وتجميل البنية التحتية الأردنية بالتعاون مع القطاع الخاص.</p>
+        <p className="text-slate-400 text-lg md:text-xl font-medium leading-relaxed max-w-lg text-right">المنصة الرسمية الموثقة لإصلاح وتجميل البنية التحتية الأردنية بالتعاون مع القطاع الخاص.</p>
         <div className="flex flex-wrap gap-4 pt-4">
            <button onClick={() => setView('report')} className="bg-white text-slate-900 px-12 py-5 rounded-[1.8rem] font-black text-xl shadow-xl hover:bg-green-50 transition-all active:scale-95">بلغ عن عطل</button>
            <button onClick={() => setView('roads')} className="bg-slate-800/50 text-white border border-slate-700 px-12 py-5 rounded-[1.8rem] font-black text-xl hover:bg-slate-800 transition-all">تصفح المشاريع</button>
         </div>
       </div>
       <div className="absolute top-0 left-0 w-full h-full opacity-[0.03] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
-      <div className="absolute -bottom-20 -left-20 w-96 h-96 bg-green-600 rounded-full blur-[140px] opacity-20 animate-pulse transition-opacity duration-1000"></div>
+      {/* Dynamic Background Glow Pulse */}
+      <div className="absolute -bottom-20 -left-20 w-96 h-96 bg-green-600 rounded-full blur-[140px] opacity-20 animate-pulse transition-opacity duration-[2000ms]"></div>
     </section>
 
-    {/* Sponsors */}
-    <div className="space-y-8">
-      <div className="flex justify-between items-end px-2 border-r-4 border-green-600 pr-4">
-         <div><h3 className="text-2xl font-black text-slate-800 uppercase tracking-tighter">شركاء الإعمار</h3><p className="text-slate-400 text-xs font-bold uppercase tracking-widest italic mt-1">Strategic CSR Partners</p></div>
+    {/* CSR Sponsors Showcase */}
+    <div className="space-y-10">
+      <div className="flex justify-between items-end px-2 border-r-4 border-green-600 pr-4 text-right">
+         <div><h3 className="text-2xl font-black text-slate-800 uppercase tracking-tighter">شركاء الإعمار</h3><p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Strategic CSR Partnerships</p></div>
          <button onClick={() => setView('partner-portal')} className="text-indigo-600 font-black text-sm flex items-center gap-1 hover:underline">بوابة الشركاء <ExternalLink size={14}/></button>
       </div>
       <div className="flex gap-6 overflow-x-auto scrollbar-hide pb-4 px-2 -mx-2">
          {sponsors.map(s => (
-           <div key={s.id} className="min-w-[220px] bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col items-center gap-5 hover:shadow-xl hover:-translate-y-2 transition-all cursor-pointer group relative overflow-hidden">
+           <div key={s.id} className="min-w-[220px] bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col items-center gap-5 hover:shadow-xl transition-all cursor-pointer group relative overflow-hidden">
               <div className="relative">
                 <div className="w-20 h-20 rounded-[1.8rem] bg-slate-50 flex items-center justify-center p-4 border border-slate-100 group-hover:bg-white transition-colors text-center">
                   <img src={s.logo} className="w-full h-full object-contain grayscale group-hover:grayscale-0 transition-all duration-500" alt={s.name} />
@@ -210,8 +217,29 @@ const LandingView = ({ setView, reports, sponsors }) => (
          ))}
       </div>
     </div>
+
+    {/* Quick Feed */}
+    <div className="space-y-8 px-2">
+       <div className="flex justify-between items-center">
+          <h3 className="text-2xl font-black text-slate-800">أحدث البلاغات</h3>
+          <button onClick={() => setView('roads')} className="text-slate-400 font-bold text-xs uppercase hover:text-green-600">عرض الكل</button>
+       </div>
+       <div className="grid md:grid-cols-3 gap-6">
+          {reports.slice(0, 3).map(r => (
+            <div key={r.id} onClick={() => setView('roads')} className="bg-white p-5 rounded-[2.5rem] border border-slate-100 shadow-sm flex gap-5 items-center cursor-pointer hover:shadow-xl transition-all group">
+               <img src={r.img} className="w-20 h-20 rounded-[1.5rem] object-cover shadow-sm group-hover:scale-110 transition-all" alt="thumb" />
+               <div className="flex-1 overflow-hidden leading-none">
+                  <p className="font-black text-lg text-slate-800 truncate mb-1">بلاغ صيانة طريق</p>
+                  <p className="text-[10px] font-bold text-gray-400 truncate flex items-center gap-1"><MapPin size={12} className="text-green-600"/> {r.location}</p>
+               </div>
+            </div>
+          ))}
+       </div>
+    </div>
   </div>
 );
+
+// --- View: Direct Camera Capture & Google Maps Integration ---
 
 const CameraReportView = ({ onComplete, user }) => {
   const [img, setImg] = useState(null);
@@ -221,9 +249,9 @@ const CameraReportView = ({ onComplete, user }) => {
   const [showMap, setShowMap] = useState(false);
   const mapRef = useRef(null);
 
-  // لودر الخرائط
+  // Load Google Maps script and initialize when map view is requested
   useEffect(() => {
-    if (showMap) {
+    if (showMap && GOOGLE_MAPS_KEY) {
       const loadMap = () => {
         if (!window.google) {
           const script = document.createElement('script');
@@ -235,39 +263,51 @@ const CameraReportView = ({ onComplete, user }) => {
           initMap();
         }
       };
+
       const initMap = () => {
         const amman = { lat: 31.9454, lng: 35.9284 };
-        const map = new window.google.maps.Map(mapRef.current, { center: coords || amman, zoom: 15, mapTypeControl: false });
-        const marker = new window.google.maps.Marker({ position: coords || amman, map, draggable: true, animation: window.google.maps.Animation.DROP });
+        const map = new window.google.maps.Map(mapRef.current, {
+          center: coords || amman,
+          zoom: 15,
+          mapTypeControl: false,
+        });
+
+        const marker = new window.google.maps.Marker({
+          position: coords || amman,
+          map,
+          draggable: true,
+          animation: window.google.maps.Animation.DROP
+        });
+
+        const updateCoordsAndAddress = (pos) => {
+          const lat = pos.lat();
+          const lng = pos.lng();
+          setCoords({ lat, lng });
+          const geocoder = new window.google.maps.Geocoder();
+          geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+            if (status === "OK" && results[0]) setLocation(results[0].formatted_address);
+          });
+        };
+
         map.addListener('click', (e) => {
           marker.setPosition(e.latLng);
-          const p = { lat: e.latLng.lat(), lng: e.latLng.lng() };
-          setCoords(p); updateAddress(p.lat, p.lng);
+          updateCoordsAndAddress(e.latLng);
         });
+
         marker.addListener('dragend', () => {
-          const p = { lat: marker.getPosition().lat(), lng: marker.getPosition().lng() };
-          setCoords(p); updateAddress(p.lat, p.lng);
+          updateCoordsAndAddress(marker.getPosition());
         });
       };
       loadMap();
     }
   }, [showMap]);
 
-  const updateAddress = (lat, lng) => {
-    if (window.google) {
-      const geocoder = new window.google.maps.Geocoder();
-      geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-        if (status === "OK" && results[0]) setLocation(results[0].formatted_address);
-      });
-    }
-  };
-
-  // فتح الكاميرا مباشرة فقط (Camera Only Mode)
+  // Direct Camera Access Only (Security Measure)
   const openCamera = () => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.capture = 'environment';
+    input.capture = 'environment'; // Triggers back camera on mobile devices
     input.onchange = (e) => {
       const file = e.target.files[0];
       if (file) {
@@ -280,7 +320,7 @@ const CameraReportView = ({ onComplete, user }) => {
   };
 
   const handleSubmit = async () => {
-    if (!img || !location) return alert("يرجى تصوير الضرر وتحديد الموقع لضمان المصداقية.");
+    if (!img || !location) return alert("يرجى التقاط صورة وتحديد الموقع بدقة لضمان قبول البلاغ.");
     setSubmitting(true);
     await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'reports'), {
       userId: user.uid, img, location, coords, createdAt: new Date().toISOString(), status: 'reported', collected: 0, goal: 250
@@ -291,88 +331,132 @@ const CameraReportView = ({ onComplete, user }) => {
   return (
     <div className="p-6 md:p-10 space-y-12 animate-in slide-in-from-bottom-12 max-w-4xl mx-auto">
       <div className="flex items-center justify-between">
-         <h2 className="text-4xl font-black text-slate-800 tracking-tighter">بلاغ ميداني مباشر</h2>
-         <button onClick={onComplete} className="p-3 bg-white rounded-full text-slate-400 border border-slate-100 shadow-sm"><X/></button>
+         <h2 className="text-4xl font-black text-slate-800 tracking-tighter">بلاغ ميداني موثق</h2>
+         <button onClick={onComplete} className="p-3 bg-white rounded-full text-slate-400 border border-slate-100 shadow-sm transition-all"><X/></button>
       </div>
 
-      {/* تصوير مباشر فقط */}
+      {/* Direct Capture Box */}
       <div className="bg-white p-10 rounded-[4.5rem] border-4 border-dashed border-slate-200 flex flex-col items-center justify-center min-h-[450px] relative overflow-hidden transition-all hover:border-green-400 group cursor-pointer shadow-inner" onClick={openCamera}>
-        {img ? <img src={img} className="absolute inset-0 w-full h-full object-cover" alt="Captured" /> : 
+        {img ? (
+          <img src={img} className="absolute inset-0 w-full h-full object-cover" alt="Verification" />
+        ) : (
           <div className="text-center space-y-8 animate-in zoom-in duration-500">
              <div className="p-10 bg-slate-50 text-slate-300 rounded-[3rem] group-hover:bg-green-50 group-hover:text-green-500 transition-all duration-700 mx-auto w-fit shadow-inner">
                 <Camera size={80}/>
              </div>
-             <div className="space-y-4">
-                <p className="text-3xl font-black text-slate-700 leading-none">فتح الكاميرا</p>
-                <p className="text-lg font-bold text-slate-400 max-w-xs mx-auto">التقط صورة حية ومباشرة للضرر لضمان قبول البلاغ فوريّاً.</p>
+             <div>
+                <p className="text-3xl font-black text-slate-700 leading-none">اضغط لفتح الكاميرا</p>
+                <p className="text-lg font-bold text-slate-400 mt-4 max-w-xs mx-auto">لالتقاط صورة حية ومباشرة للضرر. (يُمنع استخدام صور من الاستوديو لضمان المصداقية)</p>
              </div>
           </div>
-        }
+        )}
       </div>
 
-      {/* خريطة قوقل للموقع */}
+      {/* Map and Location Group */}
       <div className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-8">
          <div className="space-y-4">
             <div className="flex justify-between items-center mb-2">
-               <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">تحديد الموقع الجغرافي <ShieldCheck size={14} className="text-indigo-600"/></label>
-               <button onClick={() => setShowMap(!showMap)} className="text-xs font-black text-green-600 bg-green-50 px-4 py-2 rounded-full border border-green-100 flex items-center gap-2">
+               <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">تحديد الموقع الجغرافي الدقيق <ShieldCheck size={14} className="text-indigo-600"/></label>
+               <button onClick={() => setShowMap(!showMap)} className="text-xs font-black text-green-600 bg-green-50 px-3 py-1 rounded-full border border-green-100 flex items-center gap-2">
                  <MapIcon size={14}/> {showMap ? 'إخفاء الخريطة' : 'فتح الخريطة'}
                </button>
             </div>
             <div className="relative">
               <MapPin className="absolute right-6 top-1/2 -translate-y-1/2 text-green-600" size={28}/>
-              <input placeholder="الموقع (سيتم تحديده من الخريطة)" className="w-full p-8 pr-16 bg-slate-50 border-2 border-transparent rounded-[2.5rem] font-black outline-none focus:bg-white transition-all text-2xl" value={location} readOnly />
+              <input placeholder="الموقع (سيتم تحديده تلقائياً من الخريطة)" className="w-full p-8 pr-16 bg-slate-50 border-2 border-transparent rounded-[2.5rem] font-black outline-none focus:bg-white transition-all text-2xl shadow-inner" value={location} readOnly />
             </div>
             {showMap && <div ref={mapRef} className="w-full h-80 rounded-[3rem] border-2 border-indigo-100 shadow-xl overflow-hidden animate-in zoom-in-95"></div>}
          </div>
       </div>
 
-      <button onClick={handleSubmit} disabled={submitting || !img} className="w-full bg-slate-900 text-white py-8 rounded-[3rem] font-black text-4xl shadow-2xl active:scale-95 disabled:bg-slate-200 transition-all flex items-center justify-center gap-4 group">
-         {submitting ? <Loader2 className="animate-spin mx-auto"/> : <>نشر البلاغ الموثق <ArrowRight className="rotate-180"/></>}
+      <button onClick={handleSubmit} disabled={submitting || !img} className="w-full bg-slate-900 text-white py-8 rounded-[3rem] font-black text-4xl shadow-2xl shadow-slate-900/30 active:scale-95 disabled:bg-slate-200 transition-all flex items-center justify-center gap-4 group">
+         {submitting ? <Loader2 className="animate-spin mx-auto"/> : <>نشر البلاغ الميداني الموثق <ArrowRight className="rotate-180 group-hover:-translate-x-2 transition-transform"/></>}
       </button>
     </div>
   );
 };
 
-// --- Shared Views ---
+// --- Shared Display Components ---
 
 const ListView = ({ title, items, onDonate, onInfo }) => (
   <div className="py-12 space-y-12 animate-in slide-in-from-right duration-700">
-     <div className="px-2 space-y-1 border-r-8 border-slate-900 pr-6"><h2 className="text-4xl font-black text-slate-800 tracking-tighter uppercase leading-none">{title}</h2><p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Official Infrastructure Queue</p></div>
+     <div className="px-2 space-y-1 border-r-8 border-slate-900 pr-6 text-right leading-none">
+        <h2 className="text-4xl font-black text-slate-800 tracking-tighter uppercase leading-none">{title}</h2>
+        <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Official National Queue</p>
+     </div>
      <div className="grid gap-12">
         {items.length > 0 ? items.map(item => (
-           <div key={item.id} className="bg-white p-8 md:p-12 rounded-[4.5rem] border border-slate-100 shadow-sm space-y-10 group hover:shadow-2xl transition-all duration-700">
-              <div className="flex flex-col md:flex-row gap-12">
-                 <div className="relative w-full md:w-80 h-80 flex-shrink-0 overflow-hidden rounded-[3.5rem] shadow-inner"><img src={item.img} className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-1000" /><div className="absolute top-6 right-6 bg-red-600 text-white text-[10px] font-black px-6 py-2 rounded-full shadow-xl ring-4 ring-white uppercase tracking-widest">Priority</div></div>
+           <div key={item.id} className="bg-white p-10 md:p-14 rounded-[4.5rem] border border-slate-100 shadow-sm space-y-12 group hover:shadow-2xl hover:border-green-100 transition-all duration-700 text-right">
+              <div className="flex flex-col lg:flex-row gap-12">
+                 <div className="relative w-full lg:w-80 h-80 flex-shrink-0 overflow-hidden rounded-[3.5rem] shadow-inner">
+                    <img src={item.img} className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-[2000ms]" alt="Repair" />
+                    <div className="absolute top-6 right-6 bg-red-600 text-white text-[10px] font-black px-6 py-2 rounded-full shadow-xl ring-4 ring-white uppercase tracking-widest leading-none animate-pulse">Critical</div>
+                 </div>
                  <div className="flex-1 space-y-8">
-                    <div className="flex justify-between items-start pt-4"><h4 className="font-black text-5xl text-slate-800 leading-[1] tracking-tighter">إصلاح وتعبيد شارع</h4><button onClick={() => onInfo(item)} className="p-4 bg-indigo-50 text-indigo-600 rounded-[1.5rem] shadow-lg active:scale-90"><Info size={28}/></button></div>
-                    <p className="text-slate-400 font-bold text-2xl flex items-center gap-3"><MapPin size={28} className="text-green-600"/> {item.location}</p>
+                    <div className="flex justify-between items-start pt-4">
+                       <h4 className="font-black text-5xl text-slate-800 leading-[1] tracking-tighter">إصلاح وتعبيد شارع حيوي</h4>
+                       <div className="flex gap-4">
+                          <button onClick={() => onInfo(item)} className="p-4 bg-indigo-50 text-indigo-600 rounded-[1.5rem] hover:bg-indigo-600 hover:text-white transition-all shadow-lg active:scale-90"><Info size={28}/></button>
+                       </div>
+                    </div>
+                    <p className="text-slate-400 font-bold text-2xl flex items-center gap-3 justify-end"><MapPin size={28} className="text-green-600"/> {item.location}</p>
                     <div className="pt-10 space-y-4">
-                       <div className="flex justify-between text-sm font-black uppercase tracking-widest text-slate-500"><span>المساهمات: <span className="text-slate-900 text-2xl">{item.collected || 0} د.أ</span></span><span>الهدف: {item.goal} د.أ</span></div>
+                       <div className="flex justify-between text-sm font-black uppercase tracking-widest text-slate-500 leading-none"><span>المساهمات: <span className="text-slate-900 text-2xl">{item.collected || 0} د.أ</span></span><span>الهدف الوطني: {item.goal} د.أ</span></div>
                        <div className="w-full bg-slate-100 h-6 rounded-full overflow-hidden shadow-inner border border-slate-200/40 p-1.5"><div className="bg-gradient-to-l from-green-500 to-green-700 h-full rounded-full transition-all duration-[1.5s] ease-out shadow-lg" style={{width: `${Math.min(((item.collected||0)/(item.goal||100))*100, 100)}%`}}></div></div>
                     </div>
                  </div>
               </div>
-              <button onClick={() => onDonate(item)} className="w-full bg-amber-500 text-white py-8 rounded-[2.5rem] font-black text-4xl shadow-xl hover:bg-amber-600 active:scale-[0.98] transition-all flex items-center justify-center gap-4 group"><Heart fill="currentColor" size={32} className="group-hover:scale-125 transition-transform" /> ساهم في الإعمار الوطني</button>
+              <button onClick={() => onDonate(item)} className="w-full bg-amber-500 text-white py-10 rounded-[3rem] font-black text-4xl shadow-xl hover:bg-amber-600 active:scale-[0.98] transition-all flex items-center justify-center gap-4 group">
+                <Heart fill="currentColor" size={32} className="group-hover:scale-125 transition-transform" /> ساهم في الإعمار الوطني
+              </button>
            </div>
-        )) : <div className="py-32 text-center space-y-8 bg-white rounded-[5rem] border-2 border-dashed border-slate-100 shadow-inner"><AlertTriangle className="mx-auto text-slate-200" size={100}/><p className="text-3xl font-black text-slate-300 tracking-tighter leading-none uppercase">لا يوجد مشاريع نشطة حالياً</p></div>}
+        )) : <div className="py-32 text-center space-y-8 bg-white rounded-[5rem] border-2 border-dashed border-slate-100 shadow-inner"><AlertTriangle className="mx-auto text-slate-200 animate-pulse" size={100}/><p className="text-3xl font-black text-slate-300 tracking-tighter leading-none uppercase">لا يوجد مشاريع نشطة حالياً</p></div>}
      </div>
   </div>
 );
 
 const NavBtn = ({ icon, label, active, onClick }) => (
   <button onClick={onClick} className={`flex flex-col items-center gap-1.5 transition-all active:scale-90 ${active ? 'text-green-500' : 'text-slate-500 hover:text-white'}`}>
-    <div className={`p-3.5 rounded-2xl transition-all ${active ? 'bg-green-500/10 shadow-inner ring-1 ring-white/10' : ''}`}>{React.cloneElement(icon, { size: 26, strokeWidth: active ? 3 : 2.5 })}</div>
+    <div className={`p-3.5 rounded-2xl transition-all ${active ? 'bg-green-500/10 shadow-inner ring-1 ring-white/10' : ''}`}>
+       {React.cloneElement(icon, { size: 26, strokeWidth: active ? 3 : 2.5 })}
+    </div>
     <span className={`text-[10px] font-black uppercase tracking-widest transition-opacity ${active ? 'opacity-100' : 'opacity-40'}`}>{label}</span>
   </button>
 );
 
 const LoadingScreen = () => (
-  <div className="h-screen flex flex-col items-center justify-center bg-[#F8FAFC] gap-6 animate-in fade-in duration-500">
+  <div className="h-screen flex flex-col items-center justify-center bg-[#F8FAFC] gap-6 animate-in fade-in duration-500 text-right">
     <div className="relative"><div className="w-20 h-20 border-4 border-green-100 border-t-green-600 rounded-full animate-spin"></div><TrendingUp className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-green-600" size={32} /></div>
-    <div className="text-center animate-pulse"><p className="text-3xl font-black text-slate-800 italic">طريقنا</p><p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">Jordan Infrastructure Hub</p></div>
+    <div className="text-center animate-pulse"><p className="text-3xl font-black text-slate-800 italic leading-none">طريقنا</p><p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-widest leading-none">Securing Infrastructure Hub</p></div>
   </div>
 );
+
+const PartnerPortalView = ({ onBack }) => (
+  <div className="py-12 space-y-12 animate-in fade-in duration-700 text-right">
+     <div className="flex items-center gap-6"><button onClick={onBack} className="p-5 bg-white rounded-[2rem] border hover:bg-slate-50 transition-all active:scale-90 shadow-sm"><ChevronLeft className="rotate-180" size={32}/></button><h2 className="text-4xl font-black text-slate-800 tracking-tighter leading-none">بوابة الشركاء</h2></div>
+     <div className="bg-slate-900 p-20 rounded-[5rem] border border-white/5 shadow-2xl text-center space-y-12 relative overflow-hidden ring-1 ring-white/10">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-600 rounded-full blur-[140px] opacity-10"></div>
+        <div className="relative z-10 space-y-8"><Lock className="mx-auto text-indigo-400" size={80} /><h3 className="text-5xl font-black text-white tracking-tight leading-none text-center">المؤسسات المعتمدة</h3><p className="text-slate-400 font-medium leading-relaxed max-w-xl mx-auto text-xl italic opacity-80 text-center leading-relaxed">بوابة حصرياً لمسؤولي أمانة عمان الكبرى، البلديات، والرعاة لإدارة المشاريع ميدانياً ومتابعة الأثر المالي.</p><div className="flex flex-col gap-5 max-w-sm mx-auto pt-10"><input type="password" placeholder="كود الدخول المؤسسي الموحد" className="p-8 bg-white/5 border border-white/10 rounded-[2.5rem] outline-none focus:border-indigo-500 text-center font-black text-white text-3xl placeholder:text-slate-800 shadow-inner text-right transition-all" /><button className="bg-indigo-600 text-white py-6 rounded-[2.5rem] font-black text-3xl shadow-xl hover:bg-indigo-700 active:scale-95 leading-none transition-all">تسجيل الدخول</button></div></div>
+     </div>
+  </div>
+);
+
+const DonationPopup = ({ item, onClose, onConfirm }) => {
+  const [amount, setAmount] = useState('10');
+  const [name, setName] = useState('');
+  const [anon, setAnon] = useState(false);
+  return (
+    <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-2xl z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
+      <div className="bg-white rounded-[4.5rem] w-full max-w-lg p-16 space-y-12 shadow-2xl animate-in zoom-in-95 ring-1 ring-slate-100 text-right">
+        <div className="flex justify-between items-center leading-none"><h3 className="text-4xl font-black text-slate-800 tracking-tighter leading-none italic">ساهم في البناء</h3><button onClick={onClose} className="p-4 bg-slate-100 rounded-full shadow-sm hover:bg-slate-200 transition-all"><X size={24}/></button></div>
+        <div className="bg-green-50 p-10 rounded-[3rem] border border-green-100 shadow-inner"><p className="font-black text-slate-800 text-3xl leading-[1.1] tracking-tight">{item.item.location}</p></div>
+        <div className="space-y-6"><label className="text-xs font-black text-slate-400 mr-2 uppercase tracking-[0.3em] opacity-70 leading-none">Contribution (JOD)</label><input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full p-10 bg-slate-50 border-2 border-transparent rounded-[3rem] font-black text-center text-6xl outline-none focus:border-green-600 focus:bg-white transition-all shadow-inner text-slate-900 leading-none" /></div>
+        <div className="space-y-8"><input placeholder="الاسم الكامل" disabled={anon} className="w-full p-8 bg-white border-2 border-slate-100 rounded-[2.5rem] font-black outline-none focus:border-green-600 disabled:bg-slate-50 transition-all text-2xl shadow-sm text-right leading-none" value={name} onChange={e => setName(e.target.value)} /><label className="flex items-center gap-6 cursor-pointer group justify-end"><span className="text-2xl font-black text-slate-500 group-hover:text-slate-800 transition-colors tracking-tight">التبرع بهوية مجهولة</span><input type="checkbox" className="hidden" checked={anon} onChange={e => setAnon(e.target.checked)} /><div className={`w-10 h-10 rounded-2xl border-4 flex items-center justify-center transition-all ${anon ? 'bg-green-600 border-green-600 shadow-xl' : 'bg-white border-slate-200 group-hover:border-green-300'}`}>{anon && <CheckCircle2 size={24} className="text-white" />}</div></label></div>
+        <button onClick={() => onConfirm({ amount, donorName: name, anonymousName: anon, itemId: item.item.id, type: item.type })} className="w-full bg-amber-500 text-white py-10 rounded-[3rem] font-black text-4xl shadow-xl shadow-amber-200 active:scale-95 transition-all flex items-center justify-center gap-4 group leading-none">تأكيد ونشر المساهمة <CheckCircle size={32} className="group-hover:scale-125 transition-transform" /></button>
+      </div>
+    </div>
+  );
+};
 
 const LeaderboardView = ({ donations, onBack }) => {
   const topDonors = useMemo(() => {
@@ -386,64 +470,69 @@ const LeaderboardView = ({ donations, onBack }) => {
   }, [donations]);
   return (
     <div className="py-12 px-2 space-y-12 animate-in slide-in-from-left duration-700">
-      <div className="flex items-center gap-6"><button onClick={onBack} className="p-5 bg-white rounded-[2rem] shadow-sm border border-slate-100 hover:bg-slate-50 transition-all active:scale-90"><ChevronLeft className="rotate-180" size={32}/></button><div><h2 className="text-5xl font-black text-slate-800 tracking-tighter">لوحة الشرف</h2><p className="text-slate-400 font-bold text-sm uppercase tracking-[0.2em] mt-2">Elite Contributors Hub</p></div></div>
-      <div className="bg-white rounded-[4.5rem] border border-slate-100 shadow-2xl overflow-hidden">
+      <div className="flex items-center gap-6 text-right"><button onClick={onBack} className="p-5 bg-white rounded-[2rem] shadow-sm border border-slate-100 hover:bg-slate-50 active:scale-90 transition-all"><ChevronLeft className="rotate-180" size={32}/></button><div><h2 className="text-5xl font-black text-slate-800 tracking-tighter leading-none uppercase">لوحة الشرف</h2><p className="text-slate-400 font-bold text-sm uppercase tracking-[0.3em] mt-2 leading-none italic">Elite Contributors Hub</p></div></div>
+      <div className="bg-white rounded-[5rem] border border-slate-100 shadow-2xl overflow-hidden ring-1 ring-slate-100">
         {topDonors.map((d, i) => (
-          <div key={i} className="p-10 md:p-14 flex items-center justify-between border-b border-slate-50 last:border-0 hover:bg-amber-50/20 transition-all group">
-            <div className="flex items-center gap-10">
-               <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center font-black text-4xl shadow-lg border-4 ${i === 0 ? 'bg-amber-500 text-white border-amber-200 ring-4 ring-amber-50' : i === 1 ? 'bg-slate-100 text-slate-400' : i === 2 ? 'bg-orange-50 text-orange-600' : 'bg-slate-50 text-slate-300'}`}>{i+1}</div>
-               <div><p className="font-black text-3xl text-slate-800 tracking-tight group-hover:text-slate-900 transition-colors">{d.name}</p><div className="flex items-center gap-2 text-green-600 text-sm font-black uppercase mt-2 tracking-widest"><UserCheck size={18}/> مساهم وطني موثق</div></div>
+          <div key={i} className="p-12 md:p-16 flex items-center justify-between border-b border-slate-50 last:border-0 hover:bg-amber-50/20 transition-all group text-right">
+            <div className="flex items-center gap-12">
+               <div className={`w-24 h-24 rounded-[2.5rem] flex items-center justify-center font-black text-5xl shadow-2xl border-[6px] transition-transform group-hover:scale-110 ${i === 0 ? 'bg-amber-500 text-white border-amber-200 ring-8 ring-amber-50' : i === 1 ? 'bg-slate-100 text-slate-400 border-white' : i === 2 ? 'bg-orange-100 text-orange-600 border-white' : 'bg-slate-50 text-slate-300 border-transparent'}`}>{i+1}</div>
+               <div><p className="font-black text-4xl text-slate-800 group-hover:text-slate-900 transition-colors tracking-tighter leading-none">{d.name}</p><div className="flex items-center gap-3 text-green-600 text-sm font-black uppercase mt-3 tracking-widest leading-none"><UserCheck size={20}/> مساهم وطني موثق</div></div>
             </div>
-            <p className="text-green-600 font-black text-5xl tracking-tighter">{d.total} <span className="text-xl opacity-60 font-bold">د.أ</span></p>
+            <p className="text-green-600 font-black text-6xl tracking-tighter leading-none">{d.total} <span className="text-2xl opacity-60 font-black">د.أ</span></p>
           </div>
         ))}
+        {topDonors.length === 0 && <div className="p-40 text-center text-slate-200 font-black text-3xl opacity-30 italic">بانتظار أول مساهمة وطنية نبيلة...</div>}
       </div>
     </div>
   );
 };
 
 const DonateUnifiedView = ({ reports, onDonate }) => (
-  <div className="py-12 space-y-16 animate-in fade-in duration-1000">
-    <div className="bg-amber-50 p-10 md:p-16 rounded-[4rem] border-2 border-amber-100 flex flex-col md:flex-row items-center gap-10 shadow-inner"><div className="p-6 bg-white rounded-[2.5rem] shadow-xl"><Wallet className="text-amber-600" size={60}/></div><div className="text-center md:text-right space-y-4"><h2 className="text-4xl font-black text-amber-900 leading-none tracking-tighter text-right">صندوق إعمار الأردن الرقمي</h2><p className="text-amber-700 text-xl font-bold opacity-80 leading-relaxed max-w-xl italic text-right">تبرعاتك تذهب مباشرة لصيانة شوارعنا وملاعبنا استعداداً للاستحقاقات الوطنية الكبرى.</p></div></div>
-    <div className="space-y-10"><div className="px-2 space-y-1 border-r-8 border-green-600 pr-6"><h3 className="text-3xl font-black text-slate-800 tracking-tighter uppercase">إعمار الشوارع</h3><p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Active Road Repairs</p></div><div className="grid md:grid-cols-2 gap-8">{reports.map(r => (<div key={r.id} className="bg-white p-8 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-6 group hover:shadow-xl transition-all"><img src={r.img} className="w-full h-56 rounded-[2.5rem] object-cover shadow-md" /><div className="space-y-4"><h4 className="font-black text-2xl truncate text-slate-800 text-right">{r.location}</h4><div className="flex justify-between items-end"><p className="text-green-600 font-black text-xl">{r.collected || 0} / {r.goal} د.أ</p><button onClick={() => onDonate(r, 'road')} className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-black hover:bg-green-600 transition-all shadow-xl">تبرع</button></div></div></div>))}</div></div>
-  </div>
-);
-
-const PartnerPortalView = ({ onBack }) => (
-  <div className="py-12 space-y-12 animate-in fade-in duration-700">
-     <div className="flex items-center gap-6"><button onClick={onBack} className="p-5 bg-white rounded-[2rem] border hover:bg-slate-50 shadow-sm"><ChevronLeft className="rotate-180" size={32}/></button><h2 className="text-4xl font-black text-slate-800 tracking-tighter leading-none text-right">بوابة الشركاء</h2></div>
-     <div className="bg-slate-900 p-20 rounded-[5rem] border border-white/5 shadow-2xl text-center space-y-12 relative overflow-hidden ring-1 ring-white/10">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-600 rounded-full blur-[140px] opacity-10"></div>
-        <div className="relative z-10 space-y-8"><Lock className="mx-auto text-indigo-400" size={80} /><h3 className="text-5xl font-black text-white tracking-tight leading-none text-center">منطقة المؤسسات المعتمدة</h3><p className="text-slate-400 font-medium leading-relaxed max-w-xl mx-auto text-xl italic opacity-80 text-center text-right">هذه البوابة مخصصة حصرياً لمسؤولي أمانة عمان الكبرى، البلديات، والرعاة لإدارة المشاريع ميدانياً.</p><div className="flex flex-col gap-5 max-w-sm mx-auto pt-10"><input type="password" placeholder="كود الدخول المؤسسي الموحد" className="p-8 bg-white/5 border border-white/10 rounded-[2rem] outline-none focus:border-indigo-500 text-center font-black text-white text-2xl placeholder:text-slate-700 transition-all shadow-inner text-right" /><button className="bg-indigo-600 text-white py-6 rounded-[2.5rem] font-black text-3xl shadow-xl hover:bg-indigo-700 transition-all active:scale-95 shadow-indigo-900/30">تسجيل الدخول</button></div></div>
-     </div>
-  </div>
-);
-
-const DonationPopup = ({ item, onClose, onConfirm }) => {
-  const [amount, setAmount] = useState('10');
-  const [name, setName] = useState('');
-  const [anon, setAnon] = useState(false);
-  return (
-    <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-2xl z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
-      <div className="bg-white rounded-[4.5rem] w-full max-w-lg p-12 space-y-10 shadow-2xl animate-in zoom-in-95 ring-1 ring-slate-100 text-right">
-        <div className="flex justify-between items-center"><h3 className="text-4xl font-black text-slate-800 tracking-tighter leading-none">ساهم في البناء</h3><button onClick={onClose} className="p-4 bg-slate-100 rounded-full shadow-sm hover:bg-slate-200 transition-colors shadow-sm"><X size={24}/></button></div>
-        <div className="bg-green-50 p-8 rounded-[2.5rem] border border-green-100 shadow-inner"><p className="font-black text-slate-800 text-2xl leading-[1.1] tracking-tight">{item.item.location}</p></div>
-        <div className="space-y-6"><label className="text-xs font-black text-slate-400 mr-2 uppercase tracking-[0.3em] opacity-70">Contribution (JOD)</label><input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full p-10 bg-slate-50 border-2 border-transparent rounded-[3rem] font-black text-center text-6xl outline-none focus:border-green-600 focus:bg-white transition-all shadow-inner text-slate-900" /></div>
-        <div className="space-y-8"><input placeholder="الاسم الكامل" disabled={anon} className="w-full p-8 bg-white border-2 border-slate-100 rounded-[2.5rem] font-black outline-none focus:border-green-600 disabled:bg-slate-50 transition-all text-2xl shadow-sm placeholder:text-slate-300 text-right" value={name} onChange={e => setName(e.target.value)} /><label className="flex items-center gap-6 cursor-pointer group"><input type="checkbox" className="hidden" checked={anon} onChange={e => setAnon(e.target.checked)} /><div className={`w-10 h-10 rounded-2xl border-4 flex items-center justify-center transition-all ${anon ? 'bg-green-600 border-green-600 shadow-xl' : 'bg-white border-slate-200 group-hover:border-green-300'}`}>{anon && <CheckCircle2 size={24} className="text-white" />}</div><span className="text-2xl font-black text-slate-500 group-hover:text-slate-800 transition-colors tracking-tight">التبرع بهوية مجهولة</span></label></div>
-        <button onClick={() => onConfirm({ amount, donorName: name, anonymousName: anon, itemId: item.item.id, type: item.type })} className="w-full bg-amber-500 text-white py-10 rounded-[3rem] font-black text-4xl shadow-xl shadow-amber-200 active:scale-95 transition-all flex items-center justify-center gap-4 group">تأكيد ونشر المساهمة <CheckCircle size={32} /></button>
-      </div>
+  <div className="py-12 space-y-16 animate-in fade-in duration-1000 text-right">
+    <div className="bg-amber-50 p-10 md:p-16 rounded-[4rem] border-2 border-amber-100 flex flex-col md:flex-row items-center gap-14 shadow-inner relative overflow-hidden">
+       <div className="absolute top-0 left-0 w-full h-2 bg-amber-500 opacity-20"></div>
+       <div className="p-10 bg-white rounded-[3.5rem] shadow-xl relative z-10"><Wallet className="text-amber-600" size={80}/></div>
+       <div className="space-y-6 relative z-10 max-w-2xl">
+         <h2 className="text-4xl font-black text-amber-900 leading-none tracking-tighter uppercase italic">صندوق إعمار الأردن الرقمي</h2>
+         <p className="text-amber-700 text-2xl font-bold opacity-80 leading-relaxed italic text-right">تبرعاتك تذهب مباشرة لصيانة شوارعنا وملاعبنا استعداداً للاستحقاقات الوطنية الكبرى. كل دينار يساهم في جعل وطننا أكثر أماناً.</p>
+       </div>
     </div>
-  );
-};
+    <div className="space-y-12">
+       <div className="px-4 space-y-2 border-r-8 border-green-600 pr-8 leading-none"><h3 className="text-3xl font-black text-slate-800 uppercase leading-none">إعمار الشوارع</h3><p className="text-slate-400 font-bold text-xs uppercase tracking-widest leading-none mt-2">Active Infrastructure Queue</p></div>
+       <div className="grid md:grid-cols-2 gap-10">{reports.map(r => (<div key={r.id} className="bg-white p-10 rounded-[4rem] border border-slate-100 shadow-sm space-y-8 group hover:shadow-xl transition-all"><img src={r.img} className="w-full h-64 rounded-[3rem] object-cover shadow-xl grayscale-[0.2] group-hover:grayscale-0 transition-all duration-500" /><div className="space-y-6"><h4 className="font-black text-3xl truncate text-slate-800 leading-none tracking-tight">{r.location}</h4><div className="flex justify-between items-center bg-slate-50 p-8 rounded-[2rem] border border-slate-100 shadow-inner"><p className="text-green-600 font-black text-4xl tracking-tighter leading-none">{r.collected || 0} / {r.goal} <span className="text-lg opacity-40 font-black">د.أ</span></p><button onClick={() => onDonate(r, 'road')} className="bg-slate-900 text-white px-12 py-4 rounded-3xl font-black text-xl hover:bg-green-600 transition-all active:scale-95 shadow-xl leading-none uppercase">تبرع الآن</button></div></div></div>))}</div>
+    </div>
+  </div>
+);
 
 const InfoPopup = ({ item, onClose }) => (
-  <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-2xl z-[100] flex items-center justify-center p-6 animate-in fade-in">
-    <div className="bg-white rounded-[5rem] w-full max-w-4xl p-14 md:p-20 space-y-14 shadow-2xl relative overflow-hidden animate-in zoom-in ring-1 ring-slate-100 text-right"><button onClick={onClose} className="absolute top-10 right-10 p-4 bg-white/50 backdrop-blur-md rounded-full text-slate-800 z-20 border border-slate-200 shadow-xl hover:bg-white transition-all"><X size={40}/></button><div className="relative group"><img src={item.img} className="w-full h-[550px] rounded-[5rem] object-cover shadow-2xl transition-transform duration-[3s] group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent rounded-[5rem]"></div><div className="absolute bottom-12 right-12 left-12"><p className="text-slate-200 font-bold text-lg mb-2 flex items-center gap-3 uppercase tracking-[0.3em]"><MapPin size={24} className="text-green-500"/> {item.location}</p><h3 className="text-6xl font-black text-white leading-tight tracking-tighter leading-none uppercase">التفاصيل الفنية والهندسية</h3></div></div><div className="bg-slate-50 p-12 rounded-[4.5rem] border border-slate-100 shadow-inner space-y-8 text-right"><div className="inline-flex items-center gap-3 bg-indigo-600 text-white px-8 py-3 rounded-full font-black text-lg shadow-xl shadow-indigo-900/20"><ShieldCheck size={28}/> تقرير هندسي معتمد</div><p className="text-slate-600 text-3xl leading-[1.6] font-medium tracking-tight">يخضع هذا الموقع لرقابة مهندسي المساحة والتعبيد في أمانة عمان الكبرى. يتم تنفيذ الأعمال وفق كودات الطرق الأردنية المستدامة لضمان جودة التعبيد لأكثر من 15 عاماً.</p></div></div>
+  <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-3xl z-[100] flex items-center justify-center p-6 animate-in fade-in">
+    <div className="bg-white rounded-[6rem] w-full max-w-4xl p-14 md:p-20 space-y-14 shadow-2xl relative overflow-hidden animate-in zoom-in ring-1 ring-slate-100 text-right leading-none">
+      <button onClick={onClose} className="absolute top-12 right-12 p-6 bg-white/50 backdrop-blur-md rounded-full text-slate-800 z-20 border border-slate-200 shadow-xl hover:bg-white transition-all"><X size={40}/></button>
+      <div className="relative group">
+        <img src={item.img} className="w-full h-[550px] rounded-[5rem] object-cover shadow-2xl transition-transform duration-[3s] group-hover:scale-105" alt="Road Detail" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent rounded-[5rem]"></div>
+        <div className="absolute bottom-12 right-12 left-12 leading-none">
+          <p className="text-slate-200 font-bold text-lg mb-4 flex items-center gap-3 justify-end uppercase tracking-[0.3em] leading-none"><MapPin size={24} className="text-green-500"/> {item.location}</p>
+          <h3 className="text-6xl font-black text-white leading-tight tracking-tighter leading-none uppercase">التفاصيل الفنية والهندسية</h3>
+        </div>
+      </div>
+      <div className="bg-slate-50 p-12 rounded-[4.5rem] border border-slate-100 shadow-inner space-y-8 text-right leading-relaxed">
+         <div className="inline-flex items-center gap-3 bg-indigo-600 text-white px-8 py-3 rounded-full font-black text-lg shadow-xl leading-none"><ShieldCheck size={28}/> تقرير هندسي معتمد</div>
+         <p className="text-slate-600 text-3xl leading-[1.6] font-medium tracking-tight text-right leading-relaxed">يخضع هذا الموقع لرقابة مهندسي المساحة والتعبيد في أمانة عمان الكبرى. يتم تنفيذ الأعمال وفق كودات الطرق الأردنية المستدامة لضمان جودة التعبيد لأكثر من 15 عاماً ومقاومة كافة الظروف الجوية القاسية.</p>
+      </div>
+    </div>
   </div>
 );
 
 const ErrorScreen = ({ message }) => (
-  <div className="h-screen flex flex-col items-center justify-center bg-white p-10 text-center gap-10 animate-in zoom-in"><div className="p-10 bg-red-50 text-red-500 rounded-[4rem] shadow-inner animate-bounce"><ShieldAlert size={100}/></div><div className="space-y-4 text-right"><h3 className="text-4xl font-black text-slate-800 tracking-tighter leading-none uppercase">عذراً.. حدث تداخل تقني</h3><p className="text-slate-400 font-bold text-2xl max-w-md mx-auto">{message}</p></div><button onClick={() => window.location.reload()} className="bg-slate-900 text-white px-16 py-6 rounded-[2.2rem] font-black text-2xl shadow-2xl active:scale-95 transition-all">إعادة تهيئة النظام</button></div>
+  <div className="h-screen flex flex-col items-center justify-center bg-white p-10 text-center gap-10 animate-in zoom-in text-right leading-none">
+     <div className="p-10 bg-red-50 text-red-500 rounded-[4rem] shadow-inner animate-bounce"><ShieldAlert size={100}/></div>
+     <div className="space-y-4">
+        <h3 className="text-4xl font-black text-slate-800 tracking-tighter leading-none uppercase">عذراً.. حدث تداخل تقني</h3>
+        <p className="text-slate-400 font-bold text-2xl max-w-md mx-auto leading-relaxed">{message}</p>
+     </div>
+     <button onClick={() => window.location.reload()} className="bg-slate-900 text-white px-16 py-6 rounded-[2.2rem] font-black text-2xl shadow-2xl active:scale-95 transition-all leading-none uppercase">إعادة تهيئة النظام</button>
+  </div>
 );
 
 export default App;
