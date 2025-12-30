@@ -16,7 +16,7 @@ import {
   getAuth, signInAnonymously, onAuthStateChanged 
 } from 'firebase/auth';
 
-// --- إعدادات Firebase الخاصة بك ---
+// --- إعدادات Firebase الخاصة بك (تم دمجها مباشرة لضمان الاستقرار) ---
 const firebaseConfig = {
   apiKey: "AIzaSyCyuIFbQQCzkeaiZiuscS-WfY1Ajs2wAVU",
   authDomain: "tareeqna-57b74.firebaseapp.com",
@@ -27,13 +27,19 @@ const firebaseConfig = {
   measurementId: "G-Q3RRP2VHES"
 };
 
-// منع إعادة تهيئة Firebase إذا كان يعمل مسبقاً
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
-const db = getFirestore(app);
+// تهيئة Firebase بطريقة تمنع الأخطاء المتكررة
+let app, auth, db;
+try {
+  app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+  auth = getAuth(app);
+  db = getFirestore(app);
+} catch (e) {
+  console.error("Firebase Initialization Error:", e);
+}
+
 const appId = "tareeqna_v1_official";
 
-// مفتاح الخرائط (سيتم جلب القيمة من Vercel إذا أضفتها هناك)
+// ضع مفتاح جوجل ماب هنا مباشرة بين علامتي التنصيص إذا أردت تشغيل الخريطة فوراً
 const GOOGLE_MAPS_KEY = ""; 
 
 const App = () => {
@@ -56,11 +62,12 @@ const App = () => {
     { id: 'sp5', name: 'الملكية الأردنية', logo: 'https://api.dicebear.com/7.x/initials/svg?seed=RJ', repairs: 22, donated: 55000, color: 'bg-slate-900' }
   ], []);
 
-  // إدارة الجلسة الرقمية
+  // إدارة الدخول
   useEffect(() => {
+    if (!auth) return;
     const unsub = onAuthStateChanged(auth, async (u) => { 
       if (!u) {
-        try { await signInAnonymously(auth); } catch(e) { console.error("Guest access"); }
+        try { await signInAnonymously(auth); } catch(e) { console.error("Anonymous Sign-in failed"); }
       }
       setUser(u); 
       setLoading(false); 
@@ -68,17 +75,19 @@ const App = () => {
     return () => unsub();
   }, []);
 
-  // مزامنة البيانات الحية
+  // مزامنة البيانات
   useEffect(() => {
-    if (!user) return;
-    const unsubR = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'reports'), (snap) => {
+    if (!user || !db) return;
+    
+    const reportsRef = collection(db, 'artifacts', appId, 'public', 'data', 'reports');
+    const unsubR = onSnapshot(reportsRef, (snap) => {
       setReports(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)));
     }, (err) => {
-       console.error("Firestore Error:", err);
-       // إذا ظهر خطأ هنا، تأكد من تفعيل Firestore Rules في حسابك
+      console.warn("Firestore access denied. Check your Security Rules.");
     });
 
-    const unsubD = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'donations'), (snap) => {
+    const donationsRef = collection(db, 'artifacts', appId, 'public', 'data', 'donations');
+    const unsubD = onSnapshot(donationsRef, (snap) => {
       setDonations(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
@@ -86,7 +95,7 @@ const App = () => {
   }, [user]);
 
   const handleDonation = async (details) => {
-    if (!user) return;
+    if (!user || !db) return;
     try {
       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'donations'), {
         ...details, userId: user.uid, createdAt: new Date().toISOString()
@@ -97,14 +106,14 @@ const App = () => {
         if (item) await updateDoc(ref, { collected: (Number(item.collected) || 0) + Number(details.amount) });
       }
       setShowDonateModal(false);
-    } catch (e) { alert("فشل الاتصال بقاعدة البيانات"); }
+    } catch (e) { alert("خطأ في التبرع: يرجى التحقق من إعدادات الحماية في Firebase"); }
   };
 
   if (loading) return <LoadingScreen />;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-['Cairo'] text-slate-900 rtl text-right transition-all duration-500" dir="rtl">
-      {/* Header Premium مع الشعار المطور */}
+      {/* Header Premium */}
       <header className="bg-white/80 backdrop-blur-xl border-b border-slate-100 sticky top-0 z-[60] p-4 flex justify-between items-center shadow-sm">
         <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setView('landing')}>
           <div className="bg-green-600 p-2.5 rounded-2xl text-white shadow-lg group-hover:scale-110 transition-transform">
@@ -120,7 +129,6 @@ const App = () => {
         <button onClick={() => setView('leaderboard')} className="p-2.5 bg-amber-50 text-amber-600 rounded-xl border border-amber-100"><Trophy size={22}/></button>
       </header>
 
-      {/* Main Views */}
       <main className="max-w-5xl mx-auto pb-44 px-4 md:px-0">
         {view === 'landing' && <LandingView setView={setView} reports={reports} sponsors={sponsors} />}
         {view === 'roads' && <ListView title="بلاغات الشوارع" items={reports} onDonate={(r) => { setSelectedItem({item: r, type: 'road'}); setShowDonateModal(true); }} onInfo={(r) => { setSelectedItem(r); setShowInfoModal(true); }} />}
@@ -130,7 +138,7 @@ const App = () => {
         {view === 'donate' && <DonateUnifiedView reports={reports} onDonate={(item, type) => { setSelectedItem({item, type}); setShowDonateModal(true); }} onInfo={(item) => { setSelectedItem(item); setShowInfoModal(true); }} />}
       </main>
 
-      {/* Floating Navigation */}
+      {/* Footer Navigation */}
       <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-lg bg-slate-900/95 backdrop-blur-2xl rounded-[3rem] p-3 flex justify-around items-center z-[70] shadow-2xl border border-white/10 ring-1 ring-white/5">
         <NavBtn icon={<Home />} label="الرئيسية" active={view === 'landing'} onClick={() => setView('landing')} />
         <NavBtn icon={<MapPin />} label="الشوارع" active={view === 'roads'} onClick={() => setView('roads')} />
@@ -143,14 +151,13 @@ const App = () => {
         <NavBtn icon={<Wallet />} label="تبرع" active={view === 'donate'} onClick={() => setView('donate')} />
       </nav>
 
-      {/* Modals */}
       {showDonateModal && <DonationPopup item={selectedItem} onClose={() => setShowDonateModal(false)} onConfirm={handleDonation} />}
       {showInfoModal && <InfoPopup item={selectedItem} onClose={() => setShowInfoModal(false)} />}
     </div>
   );
 };
 
-// --- المكونات الفرعية (Sub-components) ---
+// --- Sub-Views ---
 
 const LoadingScreen = () => (
   <div className="h-screen flex flex-col items-center justify-center bg-[#F8FAFC] gap-6">
@@ -164,7 +171,6 @@ const LoadingScreen = () => (
 
 const LandingView = ({ setView, reports, sponsors }) => (
   <div className="py-10 space-y-16 animate-in fade-in duration-1000">
-    {/* هيرو مع تأثير النبض المحدث */}
     <section className="bg-slate-900 rounded-[3.5rem] p-10 md:p-16 text-white relative overflow-hidden shadow-2xl border border-white/5">
       <div className="relative z-10 max-w-2xl space-y-8 text-right">
         <div className="inline-flex items-center gap-2 bg-green-500/10 text-green-400 px-4 py-2 rounded-full border border-green-500/20 text-xs font-black uppercase">
@@ -179,13 +185,12 @@ const LandingView = ({ setView, reports, sponsors }) => (
         </div>
       </div>
       <div className="absolute top-0 left-0 w-full h-full opacity-[0.03] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
-      <div className="absolute -bottom-20 -left-20 w-96 h-96 bg-green-600 rounded-full blur-[140px] opacity-20 animate-pulse transition-opacity duration-1000"></div>
+      <div className="absolute -bottom-20 -left-20 w-96 h-96 bg-green-600 rounded-full blur-[140px] opacity-20 animate-pulse"></div>
     </section>
 
-    {/* الرعاة */}
     <div className="space-y-8">
-      <div className="flex justify-between items-end px-2 border-r-4 border-green-600 pr-4">
-         <div><h3 className="text-2xl font-black text-slate-800 uppercase tracking-tighter">شركاء الإعمار</h3><p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1 italic">Corporate Partnerships</p></div>
+      <div className="flex justify-between items-end px-2 border-r-4 border-green-600 pr-4 text-right">
+         <div><h3 className="text-2xl font-black text-slate-800 uppercase tracking-tighter leading-none">شركاء الإعمار</h3><p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1 italic leading-none">Corporate Partnerships</p></div>
          <button onClick={() => setView('partner-portal')} className="text-indigo-600 font-black text-sm flex items-center gap-1 hover:underline">بوابة الشركاء <ExternalLink size={14}/></button>
       </div>
       <div className="flex gap-6 overflow-x-auto scrollbar-hide pb-4 px-2 -mx-2">
@@ -212,7 +217,7 @@ const CameraReportView = ({ onComplete, user }) => {
   const mapRef = useRef(null);
 
   useEffect(() => {
-    if (showMap) {
+    if (showMap && GOOGLE_MAPS_KEY) {
       const initMap = () => {
         const center = coords || { lat: 31.9454, lng: 35.9284 };
         if (!window.google) return;
@@ -269,7 +274,7 @@ const CameraReportView = ({ onComplete, user }) => {
         {img ? <img src={img} className="absolute inset-0 w-full h-full object-cover" alt="Captured" /> : 
           <div className="text-center space-y-8 animate-in zoom-in duration-500">
              <div className="p-10 bg-slate-50 text-slate-300 rounded-[3rem] group-hover:bg-green-50 group-hover:text-green-500 transition-all duration-700 mx-auto w-fit shadow-inner"><Camera size={80}/></div>
-             <p className="text-3xl font-black text-slate-700 leading-none text-center">فتح الكاميرا</p>
+             <p className="text-3xl font-black text-slate-700 leading-none">فتح الكاميرا</p>
              <p className="text-lg font-bold text-slate-400 max-w-xs mx-auto text-center italic">التقط صورة حية ومباشرة للضرر لضمان قبول البلاغ فوريّاً.</p>
           </div>
         }
@@ -367,7 +372,7 @@ const PartnerPortalView = ({ onBack }) => (
      <div className="flex items-center gap-6 leading-none"><button onClick={onBack} className="p-5 bg-white rounded-[2rem] border hover:bg-slate-50 active:scale-90 shadow-sm transition-all"><ChevronLeft className="rotate-180" size={32}/></button><h2 className="text-4xl font-black text-slate-800 tracking-tighter leading-none italic">بوابة الشركاء</h2></div>
      <div className="bg-slate-900 p-20 rounded-[5rem] border border-white/5 shadow-2xl text-center space-y-12 relative overflow-hidden ring-1 ring-white/10">
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-600 rounded-full blur-[140px] opacity-10"></div>
-        <div className="relative z-10 space-y-8"><Lock className="mx-auto text-indigo-400" size={80} /><h3 className="text-5xl font-black text-white tracking-tight leading-none text-center italic uppercase">المؤسسات المعتمدة</h3><p className="text-slate-400 font-medium leading-relaxed max-w-xl mx-auto text-xl italic opacity-80 text-center leading-relaxed">بوابة حصرياً لمسؤولي أمانة عمان الكبرى، البلديات، والرعاة لإدارة المشاريع ميدانياً ومتابعة الأثر المالي والقانوني.</p><div className="flex flex-col gap-5 max-w-sm mx-auto pt-10"><input type="password" placeholder="كود الدخول المؤسسي الموحد" className="p-8 bg-white/5 border border-white/10 rounded-[2.5rem] outline-none focus:border-indigo-500 text-center font-black text-white text-3xl placeholder:text-slate-800 shadow-inner text-right leading-none transition-all" /><button className="bg-indigo-600 text-white py-8 rounded-[2.5rem] font-black text-4xl shadow-xl hover:bg-indigo-700 active:scale-95 leading-none transition-all uppercase">تسجيل الدخول</button></div></div>
+        <div className="relative z-10 space-y-8"><Lock className="mx-auto text-indigo-400" size={80} /><h3 className="text-5xl font-black text-white tracking-tight leading-none text-center italic uppercase">المؤسسات المعتمدة</h3><p className="text-slate-400 font-medium leading-relaxed max-w-xl mx-auto text-xl italic opacity-80 text-center leading-relaxed">بوابة حصرياً لمسؤولي أمانة عمان الكبرى، البلديات، والرعاة لإدارة المشاريع ميدانياً ومتابعة الأثر المالي والقانوني والبيانات الكبرى.</p><div className="flex flex-col gap-5 max-w-sm mx-auto pt-10"><input type="password" placeholder="كود الدخول المؤسسي الموحد" className="p-8 bg-white/5 border border-white/10 rounded-[2.5rem] outline-none focus:border-indigo-500 text-center font-black text-white text-3xl placeholder:text-slate-800 shadow-inner text-right leading-none transition-all" /><button className="bg-indigo-600 text-white py-8 rounded-[2.5rem] font-black text-4xl shadow-xl hover:bg-indigo-700 active:scale-95 leading-none transition-all uppercase">تسجيل الدخول</button></div></div>
      </div>
   </div>
 );
@@ -401,7 +406,7 @@ const InfoPopup = ({ item, onClose }) => (
           <h3 className="text-6xl font-black text-white leading-tight tracking-tighter leading-none uppercase italic">التفاصيل الفنية والهندسية</h3>
         </div>
       </div>
-      <div className="bg-slate-50 p-12 rounded-[4.5rem] border border-slate-100 shadow-inner space-y-8 text-right leading-relaxed">
+      <div className="bg-slate-50 p-12 rounded-[4.5rem] border border-slate-100 shadow-inner space-y-8 text-right leading-relaxed text-right leading-relaxed">
          <div className="inline-flex items-center gap-3 bg-indigo-600 text-white px-8 py-3 rounded-full font-black text-lg shadow-xl leading-none italic"><ShieldCheck size={28}/> تقرير هندسي معتمد</div>
          <p className="text-slate-600 text-3xl leading-[1.6] font-medium tracking-tight text-right leading-relaxed italic">يخضع هذا الموقع لرقابة مهندسي المساحة والتعبيد في أمانة عمان الكبرى. يتم تنفيذ الأعمال وفق كودات الطرق الأردنية المستدامة لضمان جودة التعبيد لأكثر من 15 عاماً ومقاومة كافة الظروف الجوية القاسية.</p>
       </div>
