@@ -5,7 +5,7 @@ import {
   Plus, Wallet, Sparkles, Loader2, X, Phone, ShieldCheck, Trophy, 
   Home, Star, Building, Map as MapIcon, Search,
   Lock, ShieldAlert, Share2, Globe, Send, ExternalLink,
-  UserCheck, User, CheckCircle, ArrowRight
+  UserCheck, User, CheckCircle, ArrowRight, AlertCircle
 } from 'lucide-react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
@@ -16,7 +16,7 @@ import {
   getAuth, signInAnonymously, onAuthStateChanged 
 } from 'firebase/auth';
 
-// --- إعدادات Firebase الخاصة بك ---
+// --- إعدادات Firebase الحقيقية للمشروع (لا يتم تغييرها) ---
 const firebaseConfig = {
   apiKey: "AIzaSyCyuIFbQQCzkeaiZiuscS-WfY1Ajs2wAVU",
   authDomain: "tareeqna-57b74.firebaseapp.com",
@@ -27,7 +27,7 @@ const firebaseConfig = {
   measurementId: "G-Q3RRP2VHES"
 };
 
-// تهيئة النظام (منع الانهيار عند تكرار المحاولة)
+// تهيئة النظام
 let app, auth, db;
 try {
   app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -50,7 +50,7 @@ const App = () => {
   const [showDonateModal, setShowDonateModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
 
-  // --- حل مشكلة التصميم (Tailwind Injection) لضمان التحميل على Vercel ---
+  // --- حقن التنسيقات والخطوط برمجياً لضمان العمل على Vercel ---
   useEffect(() => {
     if (!document.getElementById('tailwind-cdn')) {
       const script = document.createElement('script');
@@ -68,7 +68,7 @@ const App = () => {
     }
   }, []);
 
-  // إدارة الدخول الرقمي مع مؤقت أمان
+  // إدارة الدخول الرقمي
   useEffect(() => {
     const safetyTimeout = setTimeout(() => {
       if (loading) setLoading(false);
@@ -121,7 +121,7 @@ const App = () => {
         if (item) await updateDoc(ref, { collected: (Number(item.collected) || 0) + Number(details.amount) });
       }
       setShowDonateModal(false);
-    } catch (e) { alert("خطأ في معالجة الطلب."); }
+    } catch (e) { console.error(e); }
   };
 
   const sponsors = useMemo(() => [
@@ -136,10 +136,10 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 rtl text-right transition-all duration-500" style={{ fontFamily: "'Cairo', sans-serif" }} dir="rtl">
-      {/* Header Premium */}
+      {/* Header */}
       <header className="bg-white/80 backdrop-blur-xl border-b border-slate-100 sticky top-0 z-[60] p-4 flex justify-between items-center shadow-sm">
         <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setView('landing')}>
-          <div className="bg-green-600 p-2.5 rounded-2xl text-white shadow-lg group-hover:scale-110 transition-transform shadow-green-100">
+          <div className="bg-green-600 p-2.5 rounded-2xl text-white shadow-lg group-hover:scale-110 transition-transform">
             <TrendingUp size={24} strokeWidth={2.5} />
           </div>
           <div className="leading-none text-right">
@@ -149,13 +149,11 @@ const App = () => {
             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Jordan Road Guard</p>
           </div>
         </div>
-        <button onClick={() => setView('leaderboard')} className="p-2.5 bg-amber-50 text-amber-600 rounded-xl border border-amber-100 active:scale-95 transition-all shadow-sm">
-          <Trophy size={22}/>
-        </button>
+        <button onClick={() => setView('leaderboard')} className="p-2.5 bg-amber-50 text-amber-600 rounded-xl border border-amber-100 active:scale-95 shadow-sm transition-all"><Trophy size={22}/></button>
       </header>
 
       {/* Main Views */}
-      <main className="max-w-5xl mx-auto pb-44 px-4 md:px-0">
+      <main className="max-w-5xl mx-auto pb-44 px-4 md:px-0 text-right">
         {view === 'landing' && <LandingView setView={setView} reports={reports} sponsors={sponsors} />}
         {view === 'roads' && <ListView title="بلاغات الشوارع" items={reports} onDonate={(r) => { setSelectedItem({item: r, type: 'road'}); setShowDonateModal(true); }} onInfo={(r) => { setSelectedItem(r); setShowInfoModal(true); }} />}
         {view === 'report' && <CameraReportView onComplete={() => setView('landing')} user={user} />}
@@ -164,7 +162,7 @@ const App = () => {
         {view === 'donate' && <DonateUnifiedView reports={reports} onDonate={(item, type) => { setSelectedItem({item, type}); setShowDonateModal(true); }} onInfo={(item) => { setSelectedItem(item); setShowInfoModal(true); }} />}
       </main>
 
-      {/* Floating Navigation */}
+      {/* Navigation */}
       <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-lg bg-slate-900/95 backdrop-blur-2xl rounded-[3rem] p-3 flex justify-around items-center z-[70] shadow-2xl border border-white/10 ring-1 ring-white/5">
         <NavBtn icon={<Home />} label="الرئيسية" active={view === 'landing'} onClick={() => setView('landing')} />
         <NavBtn icon={<MapPin />} label="الشوارع" active={view === 'roads'} onClick={() => setView('roads')} />
@@ -177,14 +175,13 @@ const App = () => {
         <NavBtn icon={<Wallet />} label="تبرع" active={view === 'donate'} onClick={() => setView('donate')} />
       </nav>
 
-      {/* Modals Container */}
       {showDonateModal && <DonationPopup item={selectedItem} onClose={() => setShowDonateModal(false)} onConfirm={handleDonation} />}
       {showInfoModal && <InfoPopup item={selectedItem} onClose={() => setShowInfoModal(false)} />}
     </div>
   );
 };
 
-// --- View Components ---
+// --- المكونات الفرعية ---
 
 const LoadingScreen = () => (
   <div className="h-screen flex flex-col items-center justify-center bg-[#F8FAFC] gap-6 animate-in fade-in">
@@ -204,8 +201,8 @@ const LandingView = ({ setView, reports, sponsors }) => (
            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_12px_rgba(34,197,94,0.9)]"></div>
            مبادرة الأردن الرقمية 2030
         </div>
-        <h2 className="text-5xl md:text-7xl font-black leading-[1.1] tracking-tighter italic">معاً نعمر <br/><span className="text-green-500 underline decoration-green-900/50">شوارع الوطن</span></h2>
-        <p className="text-slate-400 text-lg md:text-xl font-medium leading-relaxed max-w-lg">المنصة الرسمية الموثقة لإصلاح وتجميل البنية التحتية الأردنية بالتعاون مع القطاع الخاص.</p>
+        <h2 className="text-5xl md:text-7xl font-black leading-[1.1] tracking-tighter italic text-right">معاً نعمر <br/><span className="text-green-500 underline decoration-green-900/50">شوارع الوطن</span></h2>
+        <p className="text-slate-400 text-lg md:text-xl font-medium leading-relaxed max-w-lg text-right">المنصة الرسمية الموثقة لإصلاح وتجميل البنية التحتية الأردنية بالتعاون مع القطاع الخاص.</p>
         <div className="flex flex-wrap gap-4 pt-4 justify-end">
            <button onClick={() => setView('report')} className="bg-white text-slate-900 px-12 py-5 rounded-[1.8rem] font-black text-xl shadow-xl hover:bg-green-50 active:scale-95 transition-all">بلغ عن عطل</button>
            <button onClick={() => setView('roads')} className="bg-slate-800/50 text-white border border-slate-700 px-12 py-5 rounded-[1.8rem] font-black text-xl hover:bg-slate-800 transition-all">تصفح المشاريع</button>
@@ -215,10 +212,9 @@ const LandingView = ({ setView, reports, sponsors }) => (
       <div className="absolute -bottom-20 -left-20 w-96 h-96 bg-green-600 rounded-full blur-[140px] opacity-20 animate-pulse duration-[3000ms]"></div>
     </section>
 
-    {/* CSR Sponsors */}
     <div className="space-y-10 px-2">
       <div className="flex justify-between items-end border-r-4 border-green-600 pr-4 text-right leading-none">
-         <div><h3 className="text-2xl font-black text-slate-800 uppercase tracking-tighter">شركاء الإعمار</h3><p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-2 italic">CSR Partners</p></div>
+         <div><h3 className="text-2xl font-black text-slate-800 uppercase tracking-tighter text-right">شركاء الإعمار</h3><p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-2 italic text-right">Corporate Partnerships</p></div>
          <button onClick={() => setView('partner-portal')} className="text-indigo-600 font-black text-sm flex items-center gap-1 hover:underline">بوابة الشركاء <ExternalLink size={14}/></button>
       </div>
       <div className="flex gap-6 overflow-x-auto scrollbar-hide pb-4">
@@ -239,111 +235,123 @@ const LandingView = ({ setView, reports, sponsors }) => (
 const CameraReportView = ({ onComplete, user }) => {
   const [img, setImg] = useState(null);
   const [location, setLocation] = useState('');
-  const [coords, setCoords] = useState(null);
+  const [locationError, setLocationError] = useState(false); // حالة التنبيه الأحمر
   const [submitting, setSubmitting] = useState(false);
-  const [showMap, setShowMap] = useState(false);
-  const mapRef = useRef(null);
+  const fileInputRef = useRef(null);
 
-  useEffect(() => {
-    if (showMap && GOOGLE_MAPS_KEY) {
-      const initMap = () => {
-        const center = coords || { lat: 31.9454, lng: 35.9284 };
-        if (!window.google) return;
-        const map = new window.google.maps.Map(mapRef.current, { center, zoom: 15, mapTypeControl: false });
-        const marker = new window.google.maps.Marker({ position: center, map, draggable: true, animation: window.google.maps.Animation.DROP });
-        const updatePos = (pos) => {
-          const lat = pos.lat(); const lng = pos.lng();
-          setCoords({ lat, lng });
-          const geocoder = new window.google.maps.Geocoder();
-          geocoder.geocode({ location: { lat, lng } }, (res, stat) => {
-            if (stat === "OK" && res[0]) setLocation(res[0].formatted_address);
-          });
-        };
-        map.addListener('click', (e) => { marker.setPosition(e.latLng); updatePos(e.latLng); });
-        marker.addListener('dragend', () => updatePos(marker.getPosition()));
-      };
-
-      if (!window.google) {
-        const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&libraries=places`;
-        script.async = true; script.onload = initMap;
-        document.head.appendChild(script);
-      } else initMap();
-    }
-  }, [showMap, coords]);
-
+  // فتح الكاميرا مباشرة فقط
   const openCamera = () => {
-    const input = document.createElement('input');
-    input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
-    input.onchange = (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = () => setImg(reader.result);
-        reader.readAsDataURL(file);
-      }
-    };
-    input.click();
+    if (fileInputRef.current) fileInputRef.current.click();
   };
 
   const handleSubmit = async () => {
-    if (!img || !location) return alert("يرجى تصوير الضرر وتحديد الموقع.");
+    // التحقق من الموقع وإظهار التنبيه الأحمر
+    if (!location.trim()) {
+      setLocationError(true);
+      return;
+    }
+    if (!img) return alert("يرجى التقاط صورة للضرر أولاً.");
+
     setSubmitting(true);
-    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'reports'), {
-      userId: user?.uid || "guest", img, location, coords, createdAt: new Date().toISOString(), status: 'reported', collected: 0, goal: 250
-    });
-    onComplete();
+    try {
+      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'reports'), {
+        userId: user?.uid || "guest", 
+        img, 
+        location, 
+        createdAt: new Date().toISOString(), 
+        status: 'reported', 
+        collected: 0, 
+        goal: 250
+      });
+      onComplete();
+    } catch (e) {
+      console.error(e);
+      alert("تعذر الإرسال، يرجى التحقق من اتصال الإنترنت.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <div className="p-6 md:p-10 space-y-12 animate-in slide-in-from-bottom-12 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between leading-none text-right"><h2 className="text-4xl font-black text-slate-800 tracking-tighter">بلاغ ميداني مباشر</h2><button onClick={onComplete} className="p-3 bg-white rounded-full text-slate-400 border border-slate-100 shadow-sm transition-all"><X/></button></div>
+    <div className="p-6 md:p-10 space-y-12 animate-in slide-in-from-bottom-12 max-w-4xl mx-auto text-right">
+      <div className="flex items-center justify-between leading-none"><h2 className="text-4xl font-black text-slate-800 tracking-tighter">بلاغ ميداني مباشر</h2><button onClick={onComplete} className="p-3 bg-white rounded-full text-slate-400 border border-slate-100 shadow-sm transition-all hover:bg-red-50 hover:text-red-500"><X/></button></div>
+      
       <div className="bg-white p-10 rounded-[4.5rem] border-4 border-dashed border-slate-200 flex flex-col items-center justify-center min-h-[450px] relative overflow-hidden cursor-pointer shadow-inner group transition-all hover:border-green-500" onClick={openCamera}>
         {img ? <img src={img} className="absolute inset-0 w-full h-full object-cover" alt="Captured" /> : 
           <div className="text-center space-y-8 animate-in zoom-in duration-500">
              <div className="p-10 bg-slate-50 text-slate-300 rounded-[3rem] group-hover:bg-green-50 group-hover:text-green-500 transition-all duration-700 mx-auto w-fit shadow-inner"><Camera size={80}/></div>
-             <p className="text-3xl font-black text-slate-700 leading-none italic">فتح الكاميرا</p>
+             <p className="text-3xl font-black text-slate-700 leading-none italic">إضغط لفتح الكاميرا</p>
              <p className="text-lg font-bold text-slate-400 max-w-xs mx-auto text-center leading-relaxed">التقط صورة حية ومباشرة للضرر لضمان قبول البلاغ فوريّاً.</p>
           </div>
         }
+        {/* ملف الإدخال المخصص للكاميرا */}
+        <input 
+          ref={fileInputRef}
+          type="file" 
+          accept="image/*" 
+          capture="environment" 
+          hidden 
+          onChange={(e) => {
+            const file = e.target.files[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = () => setImg(reader.result);
+              reader.readAsDataURL(file);
+            }
+          }} 
+        />
       </div>
-      <div className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-8 text-right">
+
+      <div className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-8 text-right relative">
          <div className="space-y-4">
-            <div className="flex justify-between items-center mb-2 leading-none"><label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">تحديد الموقع الجغرافي <ShieldCheck size={14} className="text-indigo-600"/></label>
-            {GOOGLE_MAPS_KEY && <button onClick={() => setShowMap(!showMap)} className="text-xs font-black text-green-600 bg-green-50 px-3 py-1 rounded-full flex items-center gap-2"><MapIcon size={14}/> {showMap ? 'إخفاء الخريطة' : 'فتح الخريطة'}</button>}
-            </div>
+            <label className={`text-xs font-black uppercase tracking-widest flex items-center gap-2 ${locationError ? 'text-red-600 animate-pulse' : 'text-slate-400'}`}>
+              تحديد الموقع الوصفي <ShieldCheck size={14} className={locationError ? 'text-red-600' : 'text-indigo-600'}/>
+            </label>
+            
             <div className="relative text-right">
-              <MapPin className="absolute right-6 top-1/2 -translate-y-1/2 text-green-600" size={28}/>
+              <MapPin className={`absolute right-6 top-1/2 -translate-y-1/2 transition-colors ${locationError ? 'text-red-600' : 'text-green-600'}`} size={28}/>
               <input 
-                placeholder={GOOGLE_MAPS_KEY ? "الموقع (تلقائي من الخريطة)" : "اكتب الموقع يدوياً (مثلاً: شارع الجاردنز)"} 
-                className="w-full p-8 pr-16 bg-slate-50 border-2 border-transparent rounded-[2.5rem] font-black outline-none focus:border-green-600 focus:bg-white transition-all text-2xl shadow-inner text-right leading-none" 
+                placeholder="اكتب اسم الشارع أو المنطقة (مثلاً: شارع الجاردنز)" 
+                className={`w-full p-8 pr-16 bg-slate-50 border-4 rounded-[2.5rem] font-black outline-none transition-all text-2xl shadow-inner text-right leading-none ${locationError ? 'border-red-500 bg-red-50 focus:bg-white' : 'border-transparent focus:border-green-600 focus:bg-white'}`} 
                 value={location} 
-                onChange={e => setLocation(e.target.value)} 
-                readOnly={!!GOOGLE_MAPS_KEY} 
+                onChange={e => {
+                  setLocation(e.target.value);
+                  if (e.target.value.trim()) setLocationError(false);
+                }}
               />
             </div>
-            {showMap && <div ref={mapRef} className="w-full h-80 rounded-[3rem] border-2 border-indigo-100 shadow-xl overflow-hidden animate-in zoom-in-95"></div>}
+            
+            {/* رسالة التنبيه الحمراء المخصصة */}
+            {locationError && (
+              <div className="flex items-center gap-3 bg-red-100 text-red-600 p-5 rounded-[1.5rem] border-2 border-red-200 animate-in slide-in-from-top-4">
+                <AlertCircle size={24} />
+                <p className="font-black text-lg">ملاحظة: يرجى كتابة عنوان الشارع بوضوح لسهولة وصول فرق الصيانة.</p>
+              </div>
+            )}
          </div>
       </div>
-      <button onClick={handleSubmit} disabled={submitting || !img} className="w-full bg-slate-900 text-white py-8 rounded-[3rem] font-black text-4xl shadow-2xl active:scale-95 disabled:bg-slate-200 transition-all flex items-center justify-center gap-4 group leading-none">{submitting ? <Loader2 className="animate-spin mx-auto"/> : <>نشر البلاغ الموثق <ArrowRight className="rotate-180"/></>}</button>
+
+      <button onClick={handleSubmit} disabled={submitting} className="w-full bg-slate-900 text-white py-8 rounded-[3rem] font-black text-4xl shadow-2xl active:scale-95 disabled:bg-slate-400 transition-all flex items-center justify-center gap-4 group leading-none">
+        {submitting ? <Loader2 className="animate-spin mx-auto"/> : <>نشر البلاغ الموثق <ArrowRight className="rotate-180"/></>}
+      </button>
     </div>
   );
 };
 
 const ListView = ({ title, items, onDonate, onInfo }) => (
-  <div className="py-12 space-y-12 animate-in slide-in-from-right duration-700">
-     <div className="px-2 space-y-1 border-r-8 border-slate-900 pr-6 text-right leading-none"><h2 className="text-4xl font-black text-slate-800 tracking-tighter uppercase leading-none italic">{title}</h2><p className="text-slate-400 font-bold text-xs uppercase tracking-widest leading-none mt-2">Jordan Road Guard Network</p></div>
-     <div className="grid gap-12">
+  <div className="py-12 space-y-12 animate-in slide-in-from-right duration-700 text-right">
+     <div className="px-2 space-y-1 border-r-8 border-slate-900 pr-6 text-right leading-none"><h2 className="text-4xl font-black text-slate-800 tracking-tighter uppercase leading-none italic text-right">{title}</h2><p className="text-slate-400 font-bold text-xs uppercase tracking-widest leading-none mt-2 text-right">Jordan Road Guard Network</p></div>
+     <div className="grid gap-12 text-right">
         {items.length > 0 ? items.map(item => (
            <div key={item.id} className="bg-white p-8 md:p-12 rounded-[4.5rem] border border-slate-100 shadow-sm space-y-10 group hover:shadow-2xl transition-all duration-700 text-right leading-none">
               <div className="flex flex-col md:flex-row gap-12 text-right">
                  <div className="relative w-full md:w-80 h-80 flex-shrink-0 overflow-hidden rounded-[3.5rem] shadow-inner"><img src={item.img} className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-1000" /><div className="absolute top-6 right-6 bg-red-600 text-white text-[10px] font-black px-6 py-2 rounded-full shadow-xl ring-4 ring-white uppercase tracking-widest leading-none animate-pulse">Critical</div></div>
-                 <div className="flex-1 space-y-8">
-                    <div className="flex justify-between items-start pt-4 leading-none text-right"><h4 className="font-black text-5xl text-slate-800 leading-[1] tracking-tighter italic">إصلاح وتعبيد شارع</h4><button onClick={() => onInfo(item)} className="p-4 bg-indigo-50 text-indigo-600 rounded-[1.5rem] shadow-lg active:scale-90 transition-all hover:bg-indigo-600 hover:text-white"><Info size={28}/></button></div>
-                    <p className="text-slate-400 font-bold text-2xl flex items-center gap-3 justify-end leading-none"><MapPin size={28} className="text-green-600"/> {item.location}</p>
+                 <div className="flex-1 space-y-8 text-right">
+                    <div className="flex justify-between items-start pt-4 leading-none text-right w-full"><h4 className="font-black text-5xl text-slate-800 leading-[1] tracking-tighter italic text-right">إصلاح وتعبيد شارع</h4><button onClick={() => onInfo(item)} className="p-4 bg-indigo-50 text-indigo-600 rounded-[1.5rem] shadow-lg active:scale-90 transition-all hover:bg-indigo-600 hover:text-white"><Info size={28}/></button></div>
+                    <p className="text-slate-400 font-bold text-2xl flex items-center gap-3 justify-end leading-none text-right"><MapPin size={28} className="text-green-600"/> {item.location}</p>
                     <div className="pt-10 space-y-4 text-right">
-                       <div className="flex justify-between text-sm font-black uppercase tracking-widest text-slate-500 leading-none"><span>المساهمات: <span className="text-slate-900 text-2xl">{item.collected || 0} د.أ</span></span><span>الهدف: {item.goal} د.أ</span></div>
-                       <div className="w-full bg-slate-100 h-6 rounded-full overflow-hidden shadow-inner border border-slate-200/40 p-1.5"><div className="bg-gradient-to-l from-green-500 to-green-700 h-full rounded-full transition-all duration-[1.5s] ease-out shadow-lg shadow-green-900/10" style={{width: `${Math.min(((item.collected||0)/(item.goal||100))*100, 100)}%`}}></div></div>
+                       <div className="flex justify-between text-sm font-black uppercase tracking-widest text-slate-500 leading-none"><span>المساهمات: <span className="text-slate-900 text-2xl">{item.collected || 0} د.أ</span></span><span>الهدف الوطني: {item.goal} د.أ</span></div>
+                       <div className="w-full bg-slate-100 h-6 rounded-full overflow-hidden shadow-inner border border-slate-200/40 p-1.5"><div className="bg-gradient-to-l from-green-500 to-green-700 h-full rounded-full transition-all duration-[1.5s] ease-out shadow-lg" style={{width: `${Math.min(((item.collected||0)/(item.goal||100))*100, 100)}%`}}></div></div>
                     </div>
                  </div>
               </div>
@@ -366,15 +374,15 @@ const LeaderboardView = ({ donations, onBack }) => {
   }, [donations]);
   return (
     <div className="py-12 px-2 space-y-12 animate-in slide-in-from-left duration-700 text-right leading-none">
-      <div className="flex items-center gap-6 text-right"><button onClick={onBack} className="p-5 bg-white rounded-[2rem] shadow-sm border border-slate-100 hover:bg-slate-50 active:scale-90 transition-all"><ChevronLeft className="rotate-180" size={32}/></button><div><h2 className="text-5xl font-black text-slate-800 tracking-tighter leading-none uppercase italic">لوحة الشرف</h2><p className="text-slate-400 font-bold text-sm uppercase tracking-[0.3em] mt-2 leading-none italic text-right">Elite Contributors Hub</p></div></div>
+      <div className="flex items-center gap-6 text-right"><button onClick={onBack} className="p-5 bg-white rounded-[2rem] shadow-sm border border-slate-100 hover:bg-slate-50 active:scale-90 transition-all"><ChevronLeft className="rotate-180" size={32}/></button><div><h2 className="text-5xl font-black text-slate-800 tracking-tighter leading-none uppercase italic text-right">لوحة الشرف</h2><p className="text-slate-400 font-bold text-sm uppercase tracking-[0.3em] mt-2 leading-none italic text-right">Elite Contributors Hub</p></div></div>
       <div className="bg-white rounded-[5rem] border border-slate-100 shadow-2xl overflow-hidden ring-1 ring-slate-100">
         {topDonors.map((d, i) => (
           <div key={i} className="p-10 md:p-14 flex items-center justify-between border-b border-slate-50 last:border-0 hover:bg-amber-50/20 transition-all group text-right">
             <div className="flex items-center gap-10">
                <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center font-black text-4xl shadow-lg border-4 ${i === 0 ? 'bg-amber-500 text-white border-amber-200 ring-4 ring-amber-50' : i === 1 ? 'bg-slate-100 text-slate-400' : i === 2 ? 'bg-orange-50 text-orange-600' : 'bg-slate-50 text-slate-300'}`}>{i+1}</div>
-               <div><p className="font-black text-3xl text-slate-800 group-hover:text-slate-900 transition-colors tracking-tight italic leading-none">{d.name}</p><div className="flex items-center gap-2 text-green-600 text-sm font-black uppercase mt-3 tracking-widest leading-none"><UserCheck size={18}/> مساهم وطني موثق</div></div>
+               <div><p className="font-black text-3xl text-slate-800 group-hover:text-slate-900 transition-colors tracking-tight italic leading-none text-right">{d.name}</p><div className="flex items-center gap-2 text-green-600 text-sm font-black uppercase mt-3 tracking-widest leading-none text-right"><UserCheck size={18}/> مساهم وطني موثق</div></div>
             </div>
-            <p className="text-green-600 font-black text-5xl tracking-tighter leading-none">{d.total} <span className="text-xl opacity-60 font-bold leading-none">د.أ</span></p>
+            <p className="text-green-600 font-black text-5xl tracking-tighter leading-none text-left">{d.total} <span className="text-xl opacity-60 font-bold leading-none">د.أ</span></p>
           </div>
         ))}
       </div>
@@ -392,16 +400,16 @@ const DonateUnifiedView = ({ reports, onDonate }) => (
          <p className="text-amber-700 text-2xl font-bold opacity-80 leading-relaxed italic text-right">تبرعاتك تذهب مباشرة لصيانة شوارعنا وملاعبنا استعداداً للاستحقاقات الوطنية الكبرى. كل دينار يساهم في جعل وطننا أكثر أماناً.</p>
        </div>
     </div>
-    <div className="space-y-12">
-       <div className="px-4 space-y-2 border-r-8 border-green-600 pr-8 leading-none text-right"><h3 className="text-3xl font-black text-slate-800 uppercase leading-none italic">إعمار الشوارع</h3><p className="text-slate-400 font-bold text-xs uppercase tracking-widest leading-none mt-2 italic">Active National Projects</p></div>
-       <div className="grid md:grid-cols-2 gap-10">{reports.map(r => (<div key={r.id} className="bg-white p-10 rounded-[4rem] border border-slate-100 shadow-sm space-y-8 group hover:shadow-xl transition-all leading-none text-right"><img src={r.img} className="w-full h-64 rounded-[3rem] object-cover shadow-xl grayscale-[0.2] group-hover:grayscale-0 transition-all duration-500" alt="Repair" /><div className="space-y-6"><h4 className="font-black text-3xl truncate text-slate-800 italic leading-none tracking-tight text-right">{r.location}</h4><div className="flex justify-between items-center bg-slate-50 p-8 rounded-[2rem] border border-slate-100 shadow-inner"><p className="text-green-600 font-black text-4xl tracking-tighter leading-none">{r.collected || 0} / {r.goal} <span className="text-lg opacity-40 font-black">د.أ</span></p><button onClick={() => onDonate(r, 'road')} className="bg-slate-900 text-white px-12 py-4 rounded-3xl font-black text-xl hover:bg-green-600 transition-all active:scale-95 shadow-xl leading-none italic uppercase transition-all">تبرع الآن</button></div></div></div>))}</div>
+    <div className="space-y-12 text-right">
+       <div className="px-4 space-y-2 border-r-8 border-green-600 pr-8 leading-none text-right"><h3 className="text-3xl font-black text-slate-800 uppercase leading-none italic text-right">إعمار الشوارع</h3><p className="text-slate-400 font-bold text-xs uppercase tracking-widest leading-none mt-2 italic text-right">Active National Projects</p></div>
+       <div className="grid md:grid-cols-2 gap-10 text-right">{reports.map(r => (<div key={r.id} className="bg-white p-10 rounded-[4rem] border border-slate-100 shadow-sm space-y-8 group hover:shadow-xl transition-all leading-none text-right"><img src={r.img} className="w-full h-64 rounded-[3rem] object-cover shadow-xl grayscale-[0.2] group-hover:grayscale-0 transition-all duration-500" alt="Repair" /><div className="space-y-6 text-right"><h4 className="font-black text-3xl truncate text-slate-800 italic leading-none tracking-tight text-right">{r.location}</h4><div className="flex justify-between items-center bg-slate-50 p-8 rounded-[2rem] border border-slate-100 shadow-inner"><p className="text-green-600 font-black text-4xl tracking-tighter leading-none">{r.collected || 0} / {r.goal} <span className="text-lg opacity-40 font-black">د.أ</span></p><button onClick={() => onDonate(r, 'road')} className="bg-slate-900 text-white px-12 py-4 rounded-3xl font-black text-xl hover:bg-green-600 transition-all active:scale-95 shadow-xl leading-none italic uppercase transition-all">تبرع الآن</button></div></div></div>))}</div>
     </div>
   </div>
 );
 
 const PartnerPortalView = ({ onBack }) => (
   <div className="py-12 space-y-12 animate-in fade-in duration-700 text-right leading-none">
-     <div className="flex items-center gap-6 leading-none"><button onClick={onBack} className="p-5 bg-white rounded-[2rem] border hover:bg-slate-50 active:scale-90 shadow-sm transition-all leading-none"><ChevronLeft className="rotate-180" size={32}/></button><h2 className="text-4xl font-black text-slate-800 tracking-tighter leading-none italic uppercase text-right">بوابة الشركاء</h2></div>
+     <div className="flex items-center gap-6 leading-none text-right"><button onClick={onBack} className="p-5 bg-white rounded-[2rem] border hover:bg-slate-50 active:scale-90 shadow-sm transition-all leading-none"><ChevronLeft className="rotate-180" size={32}/></button><h2 className="text-4xl font-black text-slate-800 tracking-tighter leading-none italic uppercase text-right">بوابة الشركاء</h2></div>
      <div className="bg-slate-900 p-20 rounded-[5rem] border border-white/5 shadow-2xl text-center space-y-12 relative overflow-hidden ring-1 ring-white/10">
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-600 rounded-full blur-[140px] opacity-10"></div>
         <div className="relative z-10 space-y-8 text-center"><Lock className="mx-auto text-indigo-400" size={80} /><h3 className="text-5xl font-black text-white tracking-tight leading-none text-center italic uppercase">المؤسسات المعتمدة</h3><p className="text-slate-400 font-medium leading-relaxed max-w-xl mx-auto text-xl italic opacity-80 text-center leading-relaxed">بوابة حصرياً لمسؤولي أمانة عمان الكبرى، البلديات، والرعاة لإدارة المشاريع ميدانياً ومتابعة الأثر المالي والقانوني والبيانات الكبرى.</p><div className="flex flex-col gap-5 max-w-sm mx-auto pt-10"><input type="password" placeholder="كود الدخول المؤسسي الموحد" className="p-8 bg-white/5 border border-white/10 rounded-[2.5rem] outline-none focus:border-indigo-500 text-center font-black text-white text-3xl placeholder:text-slate-800 shadow-inner text-right leading-none transition-all" /><button className="bg-indigo-600 text-white py-8 rounded-[2.5rem] font-black text-4xl shadow-xl hover:bg-indigo-700 active:scale-95 leading-none transition-all uppercase">تسجيل الدخول</button></div></div>
@@ -416,10 +424,10 @@ const DonationPopup = ({ item, onClose, onConfirm }) => {
   return (
     <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-2xl z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
       <div className="bg-white rounded-[4.5rem] w-full max-w-lg p-16 space-y-12 shadow-2xl animate-in zoom-in-95 ring-1 ring-slate-100 text-right leading-none">
-        <div className="flex justify-between items-center leading-none text-right w-full"><h3 className="text-4xl font-black text-slate-800 tracking-tighter leading-none italic uppercase">ساهم في البناء</h3><button onClick={onClose} className="p-4 bg-slate-100 rounded-full shadow-sm hover:bg-slate-200 transition-all leading-none"><X size={24}/></button></div>
+        <div className="flex justify-between items-center leading-none text-right w-full"><h3 className="text-4xl font-black text-slate-800 tracking-tighter leading-none italic uppercase text-right">ساهم في البناء</h3><button onClick={onClose} className="p-4 bg-slate-100 rounded-full shadow-sm hover:bg-slate-200 transition-all leading-none"><X size={24}/></button></div>
         <div className="bg-green-50 p-10 rounded-[3rem] border border-green-100 shadow-inner text-center"><p className="font-black text-slate-800 text-3xl leading-[1.1] tracking-tight italic">{item.item.location}</p></div>
         <div className="space-y-6"><label className="text-xs font-black text-slate-400 mr-2 uppercase tracking-[0.3em] opacity-70 leading-none italic text-right w-full block">Contribution (JOD)</label><input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full p-10 bg-slate-50 border-2 border-transparent rounded-[3rem] font-black text-center text-6xl outline-none focus:border-green-600 focus:bg-white transition-all shadow-inner text-slate-900 leading-none italic" /></div>
-        <div className="space-y-8"><input placeholder="الاسم الكامل" disabled={anon} className="w-full p-8 bg-white border-2 border-slate-100 rounded-[2.5rem] font-black outline-none focus:border-green-600 disabled:bg-slate-50 transition-all text-2xl shadow-sm text-right leading-none placeholder:italic" value={name} onChange={e => setName(e.target.value)} /><label className="flex items-center gap-6 cursor-pointer group justify-end"><span className="text-2xl font-black text-slate-500 group-hover:text-slate-800 transition-colors tracking-tight italic text-right">التبرع بهوية مجهولة</span><input type="checkbox" className="hidden" checked={anon} onChange={e => setAnon(e.target.checked)} /><div className={`w-10 h-10 rounded-2xl border-4 flex items-center justify-center transition-all ${anon ? 'bg-green-600 border-green-600 shadow-xl' : 'bg-white border-slate-200 group-hover:border-green-300'}`}>{anon && <CheckCircle2 size={24} className="text-white" />}</div></label></div>
+        <div className="space-y-8 text-right"><input placeholder="الاسم الكامل" disabled={anon} className="w-full p-8 bg-white border-2 border-slate-100 rounded-[2.5rem] font-black outline-none focus:border-green-600 disabled:bg-slate-50 transition-all text-2xl shadow-sm text-right leading-none placeholder:italic" value={name} onChange={e => setName(e.target.value)} /><label className="flex items-center gap-6 cursor-pointer group justify-end"><span className="text-2xl font-black text-slate-500 group-hover:text-slate-800 transition-colors tracking-tight italic text-right">التبرع بهوية مجهولة</span><input type="checkbox" className="hidden" checked={anon} onChange={e => setAnon(e.target.checked)} /><div className={`w-10 h-10 rounded-2xl border-4 flex items-center justify-center transition-all ${anon ? 'bg-green-600 border-green-600 shadow-xl' : 'bg-white border-slate-200 group-hover:border-green-300'}`}>{anon && <CheckCircle2 size={24} className="text-white" />}</div></label></div>
         <button onClick={() => onConfirm({ amount, donorName: name, anonymousName: anon, itemId: item.item.id, type: item.type })} className="w-full bg-amber-500 text-white py-10 rounded-[3rem] font-black text-4xl shadow-xl shadow-amber-200 active:scale-95 transition-all flex items-center justify-center gap-4 group leading-none italic uppercase transition-all">تأكيد ونشر المساهمة <CheckCircle size={32} className="group-hover:scale-125 transition-transform" /></button>
       </div>
     </div>
@@ -438,7 +446,7 @@ const InfoPopup = ({ item, onClose }) => (
           <h3 className="text-6xl font-black text-white leading-tight tracking-tighter leading-none uppercase italic text-right">التفاصيل الفنية والهندسية</h3>
         </div>
       </div>
-      <div className="bg-slate-50 p-12 rounded-[4.5rem] border border-slate-100 shadow-inner space-y-8 text-right leading-relaxed">
+      <div className="bg-slate-50 p-12 rounded-[4.5rem] border border-slate-100 shadow-inner space-y-8 text-right leading-relaxed text-right">
          <div className="inline-flex items-center gap-3 bg-indigo-600 text-white px-8 py-3 rounded-full font-black text-lg shadow-xl leading-none italic text-right"><ShieldCheck size={28}/> تقرير هندسي معتمد</div>
          <p className="text-slate-600 text-3xl leading-[1.6] font-medium tracking-tight text-right leading-relaxed italic">يخضع هذا الموقع لرقابة مهندسي المساحة والتعبيد في أمانة عمان الكبرى. يتم تنفيذ الأعمال وفق كودات الطرق الأردنية المستدامة لضمان جودة التعبيد لأكثر من 15 عاماً ومقاومة كافة الظروف الجوية القاسية.</p>
       </div>
