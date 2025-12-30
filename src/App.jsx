@@ -436,7 +436,14 @@ const DonationPopup = ({ item, onClose, onConfirm }) => {
 
 const InfoPopup = ({ item, onClose }) => (
   <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-3xl z-[100] flex items-center justify-center p-6 animate-in fade-in">
-    <div className="bg-white rounded-[6rem] w-full max-w-4xl p-14 md:p-20 space-y-14 shadow-2xl relative overflow-hidden animate-in zoom-in ring-1 ring-slate-100 text-right leading-none">
+    <div className="bg-white rounded-[6rem] w-full max-w-4xl p-14 md:p-20
+    
+    
+    
+    
+    
+    
+    0 space-y-14 shadow-2xl relative overflow-hidden animate-in zoom-in ring-1 ring-slate-100 text-right leading-none">
       <button onClick={onClose} className="absolute top-12 right-12 p-6 bg-white/50 backdrop-blur-md rounded-full text-slate-800 z-20 border border-slate-200 shadow-xl hover:bg-white transition-all leading-none"><X size={40}/></button>
       <div className="relative group text-right">
         <img src={item.img} className="w-full h-[550px] rounded-[5rem] object-cover shadow-2xl transition-transform duration-[3s] group-hover:scale-105" alt="Road Detail" />
