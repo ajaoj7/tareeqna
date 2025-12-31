@@ -36,8 +36,6 @@ try {
   db = getFirestore(app);
 } catch (error) { console.warn("Firebase wait..."); }
 
-const GOOGLE_MAPS_KEY = ""; // مفتاح الخرائط (اختياري)
-
 const App = () => {
   const [view, setView] = useState('landing'); 
   const [user, setUser] = useState(null);
@@ -71,7 +69,7 @@ const App = () => {
     return () => unsub();
   }, [loading]);
 
-  // مزامنة البيانات الحية
+  // مزامنة البيانات
   useEffect(() => {
     if (!user || !db) return;
     const unsubR = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'reports'), (snap) => {
@@ -102,7 +100,7 @@ const App = () => {
             <TrendingUp size={20} className="md:w-6 md:h-6" strokeWidth={2.5} />
           </div>
           <div className="flex flex-col leading-none select-none">
-            {/* الشعار الموحد */}
+            {/* الشعار الموحد - منع الانكسار */}
             <h1 className="text-xl md:text-3xl font-black text-slate-900 tracking-tighter italic whitespace-nowrap leading-none flex items-center">
               <span>طريق</span><span className="text-green-600">نا</span>
             </h1>
@@ -159,6 +157,7 @@ const Footer = ({ setView }) => (
     <div className="max-w-7xl mx-auto px-6 text-right">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 text-right">
         
+        {/* اتصل بنا */}
         <div className="space-y-6">
           <div className="flex flex-col gap-2">
             <h4 className="text-xl font-black text-slate-900">اتصل بنا</h4>
@@ -183,6 +182,7 @@ const Footer = ({ setView }) => (
           </div>
         </div>
 
+        {/* بوابتي */}
         <div className="space-y-6">
           <h4 className="text-xl font-black text-slate-900">بوابتي الرقمية</h4>
           <ul className="space-y-3">
@@ -195,10 +195,11 @@ const Footer = ({ setView }) => (
           </ul>
         </div>
 
+        {/* حول المنصة */}
         <div className="space-y-6">
           <h4 className="text-xl font-black text-slate-900">حول المنصة</h4>
           <ul className="space-y-3 text-right">
-            <li onClick={() => setView('partner-portal')} className="flex items-center gap-3 justify-start cursor-pointer"><div className="w-1.5 h-1.5 bg-slate-200 rounded-full"></div><span className="text-sm font-black text-slate-500 group-hover:text-slate-900 transition-colors">عن طريقنا</span></li>
+            <li onClick={() => setView('partner-portal')} className="flex items-center gap-3 justify-start cursor-pointer"><div className="w-1.5 h-1.5 bg-slate-200 rounded-full"></div><span className="text-sm font-black text-slate-500">عن طريقنا</span></li>
             <li className="flex items-center gap-3 justify-start cursor-pointer"><div className="w-1.5 h-1.5 bg-slate-200 rounded-full"></div><span className="text-sm font-black text-slate-500">سياسة الخصوصية</span></li>
           </ul>
           <div className="flex gap-4 pt-4 justify-start">
@@ -208,6 +209,7 @@ const Footer = ({ setView }) => (
           </div>
         </div>
 
+        {/* التوثيق الذكي */}
         <div>
            <div className="bg-green-600 p-8 rounded-[3rem] text-white shadow-xl relative overflow-hidden group">
               <div className="relative z-10 text-right">
@@ -254,7 +256,7 @@ const LandingView = ({ setView, reports, sponsors }) => {
               <div className="space-y-6 leading-none text-right">
                  {sponsors.map(s => (
                    <div key={s.id} className="flex items-center gap-4 group cursor-pointer text-right transition-transform hover:-translate-x-1 justify-start">
-                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-slate-50 flex items-center justify-center p-2 border border-slate-50 group-hover:border-green-100 transition-all shrink-0"><img src={s.logo} className="w-full h-full object-contain grayscale group-hover:grayscale-0 transition-all" alt={s.name} /></div>
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-slate-50 flex items-center justify-center p-2 border border-slate-50 transition-all shrink-0"><img src={s.logo} className="w-full h-full object-contain grayscale group-hover:grayscale-0 transition-all" alt={s.name} /></div>
                       <div className="flex-1 min-w-0">
                          <p className="font-black text-xs md:text-sm text-slate-800 truncate mb-1">{s.name}</p>
                          <p className="text-[9px] md:text-[10px] font-bold text-green-600 leading-none flex items-center gap-1"><CheckCircle2 size={10}/> {s.repairs} مشروع منجز</p>
@@ -607,6 +609,28 @@ const PartnerPortalView = ({ onBack }) => (
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-600 rounded-full blur-[140px] opacity-10 leading-none text-right text-right"></div>
         <div className="relative z-10 space-y-8 text-center leading-none text-right text-center text-center"><Lock className="mx-auto text-indigo-400 leading-none text-right text-right" size={60} /><h3 className="text-3xl md:text-5xl font-black text-white leading-none italic uppercase text-center text-center text-center">المؤسسات المعتمدة</h3><p className="text-slate-400 font-medium leading-relaxed max-w-xl mx-auto text-base md:text-xl italic opacity-80 text-center leading-relaxed italic text-center text-center">بوابة حصرياً لمسؤولي أمانة عمان الكبرى والبلديات لإدارة المشاريع ميدانياً ومتابعة الأثر.</p><div className="flex flex-col gap-5 max-w-sm mx-auto pt-10 text-center text-center text-center"><input type="password" placeholder="كود الدخول الموحد" className="p-6 md:p-8 bg-white/5 border border-white/10 rounded-[1.5rem] md:rounded-[2.5rem] outline-none focus:border-indigo-500 text-center font-black text-white text-2xl md:text-3xl placeholder:text-slate-800 shadow-inner text-right leading-none transition-all text-center text-center" /><button className="bg-indigo-600 text-white py-6 md:py-8 rounded-[1.8rem] md:rounded-[2.5rem] font-black text-3xl md:text-4xl shadow-xl hover:bg-indigo-700 active:scale-95 leading-none transition-all uppercase text-center text-center">دخول</button></div></div>
      </div>
+  </div>
+);
+
+const NavBtn = ({ icon, label, active, onClick }) => (
+  <button onClick={onClick} className={`flex flex-col items-center gap-1 transition-all active:scale-90 leading-none shrink-0 ${active ? 'text-green-500' : 'text-slate-500 hover:text-white'} text-right`}>
+    <div className={`p-2 md:p-3.5 rounded-xl md:rounded-2xl transition-all shrink-0 ${active ? 'bg-green-500/10 shadow-inner' : ''} text-right text-right text-right`}>
+       {React.cloneElement(icon, { size: 20, className: "md:w-[26px] md:h-[26px] text-right text-right", strokeWidth: active ? 3 : 2.5 })}
+    </div>
+    <span className={`text-[7px] md:text-[10px] font-black uppercase tracking-widest transition-opacity leading-none shrink-0 ${active ? 'opacity-100' : 'opacity-40'} text-right text-right text-right`}>{label}</span>
+  </button>
+);
+
+const LoadingScreen = () => (
+  <div className="h-screen flex flex-col items-center justify-center bg-[#F8FAFC] gap-6 animate-in fade-in text-center px-10 leading-none text-right">
+    <div className="relative leading-none text-right text-right">
+      <div className="w-16 h-16 md:w-20 md:h-20 border-4 border-green-100 border-t-green-600 rounded-full animate-spin leading-none text-right"></div>
+      <TrendingUp className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-green-600 leading-none text-right" size={32} />
+    </div>
+    <div className="space-y-2 leading-none text-right text-right">
+       <p className="text-xl md:text-2xl font-black text-slate-800 italic uppercase leading-none tracking-tighter text-right">طريق<span className="text-green-600 leading-none text-right">نا</span></p>
+       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none text-right text-right">المنصة الوطنية الأردنية</p>
+    </div>
   </div>
 );
 
