@@ -16,7 +16,7 @@ import {
   getAuth, signInAnonymously, onAuthStateChanged 
 } from 'firebase/auth';
 
-// --- إعدادات Firebase المعتمدة (حسابك الشخصي) ---
+// --- إعدادات Firebase الخاصة بك (تم دمجها حرفياً) ---
 const firebaseConfig = {
   apiKey: "AIzaSyCyuIFbQQCzkeaiZiuscS-WfY1Ajs2wAVU",
   authDomain: "tareeqna-57b74.firebaseapp.com",
@@ -29,13 +29,15 @@ const firebaseConfig = {
 
 const appId = "tareeqna_production_final_v1";
 
-// تهيئة النظام بمنطق حماية
+// تهيئة النظام
 let app, auth, db;
 try {
   app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
   auth = getAuth(app);
   db = getFirestore(app);
 } catch (error) { console.warn("Firebase wait..."); }
+
+const GOOGLE_MAPS_KEY = ""; // مفتاح الخرائط (اختياري)
 
 const App = () => {
   const [view, setView] = useState('landing'); 
@@ -47,7 +49,7 @@ const App = () => {
   const [showDonateModal, setShowDonateModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
 
-  // 1. تحميل الموارد (Tailwind + Fonts) برمجياً
+  // تحميل الموارد برمجياً لضمان التصميم
   useEffect(() => {
     const injectResource = (tag, id, attr) => {
       if (!document.getElementById(id)) {
@@ -59,7 +61,7 @@ const App = () => {
     injectResource('link', 'cairo-font', { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap' });
   }, []);
 
-  // 2. إدارة الدخول الرقمي
+  // إدارة الدخول الرقمي
   useEffect(() => {
     const safetyTimeout = setTimeout(() => loading && setLoading(false), 5000);
     if (!auth) return setLoading(false);
@@ -70,7 +72,7 @@ const App = () => {
     return () => unsub();
   }, [loading]);
 
-  // 3. مزامنة البيانات الحية
+  // مزامنة البيانات الحية
   useEffect(() => {
     if (!user || !db) return;
     const unsubR = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'reports'), (snap) => {
@@ -93,15 +95,14 @@ const App = () => {
   if (loading) return <LoadingScreen />;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 rtl text-right" style={{ fontFamily: "'Cairo', sans-serif" }} dir="rtl">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 rtl text-right transition-all duration-500 selection:bg-green-100" style={{ fontFamily: "'Cairo', sans-serif" }} dir="rtl">
       {/* Header - Fixed & Solid Logo */}
       <header className="bg-white/80 backdrop-blur-xl border-b border-slate-100 sticky top-0 z-[60] p-3 md:p-4 flex justify-between items-center shadow-sm">
         <div className="flex items-center gap-2 md:gap-3 cursor-pointer group shrink-0" onClick={() => setView('landing')}>
           <div className="bg-green-600 p-2 md:p-2.5 rounded-xl md:rounded-2xl text-white shadow-lg group-hover:rotate-6 transition-all">
             <TrendingUp size={20} className="md:w-6 md:h-6" strokeWidth={2.5} />
           </div>
-          <div className="flex flex-col leading-none">
-            {/* الشعار الموحد */}
+          <div className="flex flex-col leading-none select-none">
             <h1 className="text-xl md:text-3xl font-black text-slate-900 tracking-tighter italic whitespace-nowrap leading-none flex items-center">
               <span>طريق</span><span className="text-green-600">نا</span>
             </h1>
@@ -123,7 +124,7 @@ const App = () => {
 
       <Footer setView={setView} />
 
-      {/* Navigation */}
+      {/* Floating Navigation */}
       <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[94%] max-w-lg bg-slate-900/95 backdrop-blur-2xl rounded-[2.5rem] md:rounded-[3rem] p-2 md:p-3 flex justify-around items-center z-[70] shadow-2xl border border-white/10">
         <NavBtn icon={<Home />} label="الرئيسية" active={view === 'landing'} onClick={() => setView('landing')} />
         <NavBtn icon={<MapPin />} label="الشوارع" active={view === 'roads'} onClick={() => setView('roads')} />
@@ -165,7 +166,7 @@ const LandingView = ({ setView, reports, sponsors }) => {
       <div className="flex flex-col lg:flex-row gap-8">
         
         {/* SIDEBAR LEFT */}
-        <aside className="w-full lg:w-72 space-y-6 lg:order-1 order-2">
+        <aside className="w-full lg:w-72 space-y-6 order-2 lg:order-1">
            <div className="bg-white p-6 md:p-8 rounded-[2.5rem] md:rounded-[3rem] border border-slate-100 shadow-sm sticky top-28">
               <div className="space-y-1 mb-8 border-r-4 border-green-600 pr-4 text-right">
                  <h3 className="text-xl font-black text-slate-800 leading-none">شركاء الإعمار</h3>
@@ -187,7 +188,7 @@ const LandingView = ({ setView, reports, sponsors }) => {
         </aside>
 
         {/* MAIN FEED */}
-        <div className="flex-1 space-y-12 md:space-y-20 lg:order-2 order-1 text-right">
+        <div className="flex-1 space-y-12 md:space-y-20 order-1 lg:order-2 text-right">
           <section className="bg-slate-900 rounded-[2.5rem] md:rounded-[3.5rem] p-8 md:p-16 text-white relative overflow-hidden shadow-2xl border border-white/5 text-right">
             <div className="relative z-10 max-w-2xl space-y-6 text-right leading-none">
               <div className="inline-flex items-center gap-2 bg-green-500/10 text-green-400 px-3 py-1.5 rounded-full border border-green-500/20 text-[9px] md:text-xs font-black uppercase tracking-widest leading-none">
@@ -242,7 +243,7 @@ const HomeSection = ({ title, items, setView, icon, isSuccess }) => (
   </div>
 );
 
-// --- Report View (Original Standard System) ---
+// --- Report View (Fixed & Secured) ---
 const ReportView = ({ onComplete, user }) => {
   const [img, setImg] = useState(null);
   const [location, setLocation] = useState('');
@@ -280,7 +281,6 @@ const ReportView = ({ onComplete, user }) => {
       // ضغط الصورة قبل الإرسال لتجنب رفض Firebase
       const compressedImg = await compressImage(img);
       
-      // تحليل بسيط للاسم (بدون تعقيد)
       const streetType = location.includes("مطار") ? "طريق سيادي" : "شارع حيوي";
 
       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'reports'), {
@@ -288,8 +288,8 @@ const ReportView = ({ onComplete, user }) => {
         img: compressedImg,
         location,
         streetType,
-        severity: 7, // افتراضي
-        goal: 250, // افتراضي
+        severity: 7, 
+        goal: 250, 
         collected: 0,
         createdAt: new Date().toISOString(),
         status: 'verified_original'
@@ -316,7 +316,6 @@ const ReportView = ({ onComplete, user }) => {
              <div className="leading-none"><p className="text-2xl font-black text-slate-700 leading-none italic uppercase text-center leading-none">إرفاق صورة</p><p className="text-sm font-bold text-slate-400 mt-4 max-w-xs mx-auto italic leading-none text-center leading-none">اضغط هنا لفتح الكاميرا أو الاستوديو.</p></div>
           </div>
         }
-        {/* Input يقبل كل شيء (كاميرا وملفات) كما في النسخة الأصلية */}
         <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={(e) => {
           const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = () => setImg(r.result); r.readAsDataURL(f); }
         }} />
@@ -356,7 +355,7 @@ const ListView = ({ title, items, isStadium }) => (
   <div className="py-8 md:py-12 space-y-10 animate-in slide-in-from-right duration-700 text-right leading-none">
      <div className="px-2 border-r-8 border-slate-900 pr-4 md:pr-6 text-right leading-none">
         <h2 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tighter uppercase italic text-right leading-none">{title}</h2>
-        <p className="text-slate-400 font-bold text-[10px] md:text-xs uppercase tracking-widest mt-2 text-right leading-none">Verified Database</p>
+        <p className="text-slate-400 font-bold text-[10px] md:text-xs uppercase tracking-widest mt-2 text-right leading-none">Verified Infrastructure Database</p>
      </div>
      <div className="grid gap-8 leading-none text-right">
         {items.length > 0 ? items.map(item => (
@@ -403,13 +402,11 @@ const NavBtn = ({ icon, label, active, onClick }) => (
   </button>
 );
 
-// --- Footer & Modals ---
-
 const Footer = ({ setView }) => (
   <footer className="bg-white border-t border-slate-100 pt-16 pb-32 mt-20">
     <div className="max-w-7xl mx-auto px-6 text-right">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 text-right">
-        {/* اتصل بنا */}
+        
         <div className="space-y-6">
           <div className="flex flex-col gap-2">
             <h4 className="text-xl font-black text-slate-900">اتصل بنا</h4>
@@ -433,7 +430,7 @@ const Footer = ({ setView }) => (
             </div>
           </div>
         </div>
-        {/* بوابتي */}
+
         <div className="space-y-6">
           <h4 className="text-xl font-black text-slate-900">بوابتي الرقمية</h4>
           <ul className="space-y-3">
@@ -445,7 +442,7 @@ const Footer = ({ setView }) => (
             ))}
           </ul>
         </div>
-        {/* حول المنصة */}
+
         <div className="space-y-6">
           <h4 className="text-xl font-black text-slate-900">حول المنصة</h4>
           <ul className="space-y-3 text-right">
@@ -458,7 +455,7 @@ const Footer = ({ setView }) => (
              ))}
           </div>
         </div>
-        {/* توثيق ذكي */}
+
         <div>
            <div className="bg-green-600 p-8 rounded-[3rem] text-white shadow-xl relative overflow-hidden group">
               <div className="relative z-10 text-right">
@@ -471,6 +468,14 @@ const Footer = ({ setView }) => (
               <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
            </div>
         </div>
+      </div>
+      <div className="mt-16 pt-8 border-t border-slate-50 flex flex-col md:flex-row justify-between items-center gap-4">
+         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] italic">© 2024 Tareeqna Jordan | All Rights Reserved</p>
+         <div className="flex items-center gap-2 opacity-30 grayscale pointer-events-none">
+            <span className="text-[8px] font-black text-slate-900">Powered by</span>
+            <TrendingUp size={12} className="text-green-600"/>
+            <span className="text-[8px] font-black text-slate-900">Jordan AI Engine</span>
+         </div>
       </div>
     </div>
   </footer>
@@ -509,7 +514,7 @@ const DonateUnifiedView = ({ reports, onDonate }) => (
     <div className="bg-amber-50 p-8 md:p-16 rounded-[2.5rem] md:rounded-[4rem] border-2 border-amber-100 flex flex-col md:flex-row items-center gap-8 shadow-inner relative overflow-hidden text-right leading-none text-right">
        <div className="space-y-4 md:space-y-6 relative z-10 text-right w-full leading-none order-2 md:order-1 text-right text-right">
          <h2 className="text-3xl md:text-4xl font-black text-amber-900 leading-none italic uppercase text-right w-full leading-none text-right text-right">صندوق الإعمار الرقمي</h2>
-         <p className="text-amber-700 text-lg md:text-2xl font-bold opacity-80 leading-relaxed italic text-right leading-relaxed text-right text-right">تبرعاتك تذهب مباشرة لصيانة شوارعنا وملاعبنا استعداداً للاستحقاقات الوطنية الكبرى. كل دينار يساهم في جعل وطننا أكثر أماناً وجمالاً.</p>
+         <p className="text-amber-700 text-lg md:text-2xl font-bold opacity-80 leading-relaxed italic text-right leading-relaxed text-right text-right">تتبرعاتك تذهب مباشرة لصيانة شوارعنا وملاعبنا استعداداً للاستحقاقات الوطنية الكبرى. كل دينار يساهم في جعل وطننا أكثر أماناً وجمالاً.</p>
        </div>
        <div className="p-8 bg-white rounded-[2rem] shadow-xl relative z-10 leading-none order-1 md:order-2 text-right"><Wallet className="text-amber-600 md:w-16 md:h-16 text-right" size={50}/></div>
     </div>
