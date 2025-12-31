@@ -461,7 +461,7 @@ const DonateUnifiedView = ({ reports, onDonate }) => (
        <div className="p-8 bg-white rounded-[2rem] md:rounded-[3rem] shadow-xl relative z-10"><Wallet className="text-amber-600 md:w-16 md:h-16" size={50}/></div>
        <div className="space-y-4 md:space-y-6 relative z-10 text-right">
          <h2 className="text-3xl md:text-4xl font-black text-amber-900 leading-none italic uppercase">صندوق الإعمار الرقمي</h2>
-         <p className="text-amber-700 text-lg md:text-2xl font-bold opacity-80 leading-relaxed italic text-right">تبرعاتك تذهب مباشرة لصيانة شوارعنا استعداداً للاستحقاقات الوطنية الكبرى.</p>
+         <p className="text-amber-700 text-lg md:text-2xl font-bold opacity-80 leading-relaxed italic text-right">تبرعاتك تذهب مباشرة لصيانة شوارعنا وملاعبنا استعداداً للاستحقاقات الوطنية الكبرى. كل دينار يساهم في جعل وطننا أكثر أماناً وجمالاً.</p>
        </div>
     </div>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
