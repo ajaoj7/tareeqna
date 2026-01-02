@@ -16,7 +16,7 @@ import {
   getAuth, signInAnonymously, onAuthStateChanged 
 } from 'firebase/auth';
 
-// --- إعدادات Firebase الخاصة بك (تم دمجها حرفياً) ---
+// --- إعدادات Firebase المعتمدة ---
 const firebaseConfig = {
   apiKey: "AIzaSyCyuIFbQQCzkeaiZiuscS-WfY1Ajs2wAVU",
   authDomain: "tareeqna-57b74.firebaseapp.com",
@@ -29,15 +29,12 @@ const firebaseConfig = {
 
 const appId = "tareeqna_production_final_v1";
 
-// تهيئة النظام
 let app, auth, db;
 try {
   app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
   auth = getAuth(app);
   db = getFirestore(app);
 } catch (error) { console.warn("Firebase wait..."); }
-
-const GOOGLE_MAPS_KEY = ""; // مفتاح الخرائط (اختياري)
 
 const App = () => {
   const [view, setView] = useState('landing'); 
@@ -49,7 +46,6 @@ const App = () => {
   const [showDonateModal, setShowDonateModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
 
-  // تحميل الموارد برمجياً لضمان التصميم
   useEffect(() => {
     const injectResource = (tag, id, attr) => {
       if (!document.getElementById(id)) {
@@ -61,7 +57,6 @@ const App = () => {
     injectResource('link', 'cairo-font', { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap' });
   }, []);
 
-  // إدارة الدخول الرقمي
   useEffect(() => {
     const safetyTimeout = setTimeout(() => loading && setLoading(false), 5000);
     if (!auth) return setLoading(false);
@@ -72,7 +67,6 @@ const App = () => {
     return () => unsub();
   }, [loading]);
 
-  // مزامنة البيانات الحية
   useEffect(() => {
     if (!user || !db) return;
     const unsubR = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'reports'), (snap) => {
@@ -95,16 +89,17 @@ const App = () => {
   if (loading) return <LoadingScreen />;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 rtl text-right transition-all duration-500 selection:bg-green-100" style={{ fontFamily: "'Cairo', sans-serif" }} dir="rtl">
-      {/* Header - Fixed & Solid Logo */}
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 rtl text-right" style={{ fontFamily: "'Cairo', sans-serif" }} dir="rtl">
+      {/* Header */}
       <header className="bg-white/80 backdrop-blur-xl border-b border-slate-100 sticky top-0 z-[60] p-3 md:p-4 flex justify-between items-center shadow-sm">
         <div className="flex items-center gap-2 md:gap-3 cursor-pointer group shrink-0" onClick={() => setView('landing')}>
           <div className="bg-green-600 p-2 md:p-2.5 rounded-xl md:rounded-2xl text-white shadow-lg group-hover:rotate-6 transition-all">
             <TrendingUp size={20} className="md:w-6 md:h-6" strokeWidth={2.5} />
           </div>
+          {/* تم استبدال الـ SVG بالنص العادي المنسق لضمان الظهور بجانب الأيقونة */}
           <div className="flex flex-col leading-none select-none">
-            <h1 className="text-xl md:text-3xl font-black text-slate-900 tracking-tighter italic whitespace-nowrap leading-none flex items-center">
-              <span>طريق</span><span className="text-green-600">نا</span>
+            <h1 className="text-xl md:text-3xl font-black text-slate-900 tracking-tighter italic whitespace-nowrap leading-none" style={{ fontFamily: "'Cairo', sans-serif" }}>
+              طريق<span className="text-green-600">نا</span>
             </h1>
             <p className="text-[7px] md:text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Jordan Road Guard</p>
           </div>
@@ -166,16 +161,16 @@ const LandingView = ({ setView, reports, sponsors }) => {
       <div className="flex flex-col lg:flex-row gap-8">
         
         {/* SIDEBAR LEFT */}
-        <aside className="w-full lg:w-72 space-y-6 order-2 lg:order-1">
+        <aside className="w-full lg:w-72 space-y-6 lg:order-1 order-2">
            <div className="bg-white p-6 md:p-8 rounded-[2.5rem] md:rounded-[3rem] border border-slate-100 shadow-sm sticky top-28">
               <div className="space-y-1 mb-8 border-r-4 border-green-600 pr-4 text-right">
                  <h3 className="text-xl font-black text-slate-800 leading-none">شركاء الإعمار</h3>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none italic">Corporate Partnerships</p>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider italic">Corporate Partnerships</p>
               </div>
               <div className="space-y-6">
                  {sponsors.map(s => (
                    <div key={s.id} className="flex items-center gap-4 group cursor-pointer text-right transition-transform hover:-translate-x-1 justify-start">
-                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-slate-50 flex items-center justify-center p-2 border border-slate-50 group-hover:border-green-100 transition-all shrink-0"><img src={s.logo} className="w-full h-full object-contain grayscale group-hover:grayscale-0 transition-all" alt={s.name} /></div>
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-slate-50 flex items-center justify-center p-2 border border-slate-50 transition-all shrink-0"><img src={s.logo} className="w-full h-full object-contain grayscale group-hover:grayscale-0 transition-all" alt={s.name} /></div>
                       <div className="flex-1 min-w-0">
                          <p className="font-black text-xs md:text-sm text-slate-800 truncate mb-1">{s.name}</p>
                          <p className="text-[9px] md:text-[10px] font-bold text-green-600 leading-none flex items-center gap-1"><CheckCircle2 size={10}/> {s.repairs} مشروع منجز</p>
@@ -188,7 +183,7 @@ const LandingView = ({ setView, reports, sponsors }) => {
         </aside>
 
         {/* MAIN FEED */}
-        <div className="flex-1 space-y-12 md:space-y-20 order-1 lg:order-2 text-right">
+        <div className="flex-1 space-y-12 md:space-y-20 lg:order-2 order-1 text-right">
           <section className="bg-slate-900 rounded-[2.5rem] md:rounded-[3.5rem] p-8 md:p-16 text-white relative overflow-hidden shadow-2xl border border-white/5 text-right">
             <div className="relative z-10 max-w-2xl space-y-6 text-right leading-none">
               <div className="inline-flex items-center gap-2 bg-green-500/10 text-green-400 px-3 py-1.5 rounded-full border border-green-500/20 text-[9px] md:text-xs font-black uppercase tracking-widest leading-none">
@@ -243,7 +238,7 @@ const HomeSection = ({ title, items, setView, icon, isSuccess }) => (
   </div>
 );
 
-// --- Report View (Fixed & Secured) ---
+// --- Report View ---
 const ReportView = ({ onComplete, user }) => {
   const [img, setImg] = useState(null);
   const [location, setLocation] = useState('');
@@ -251,7 +246,6 @@ const ReportView = ({ onComplete, user }) => {
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef(null);
 
-  // دالة ضغط الصور (Essential Fix)
   const compressImage = (base64) => {
     return new Promise((resolve) => {
       const img = new Image(); img.src = base64;
@@ -272,15 +266,12 @@ const ReportView = ({ onComplete, user }) => {
     
     setSubmitting(true); setError(null);
 
-    // Timeout safety
     const timer = setTimeout(() => {
         if (submitting) { setSubmitting(false); setError("بطء في الاتصال."); }
     }, 20000);
 
     try {
-      // ضغط الصورة قبل الإرسال لتجنب رفض Firebase
       const compressedImg = await compressImage(img);
-      
       const streetType = location.includes("مطار") ? "طريق سيادي" : "شارع حيوي";
 
       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'reports'), {
@@ -308,7 +299,6 @@ const ReportView = ({ onComplete, user }) => {
     <div className="p-4 md:p-10 space-y-8 animate-in slide-in-from-bottom-12 max-w-4xl mx-auto text-right leading-none">
       <div className="flex items-center justify-between"><h2 className="text-3xl font-black text-slate-800 tracking-tighter leading-none text-right">تبليغ جديد</h2><button onClick={onComplete} className="p-2 md:p-3 bg-white rounded-full text-slate-400 border border-slate-100 shadow-sm leading-none"><X/></button></div>
       
-      {/* Upload Box (Standard) */}
       <div className="bg-white p-8 md:p-10 rounded-[3rem] border-4 border-dashed border-slate-200 flex flex-col items-center justify-center min-h-[350px] relative overflow-hidden cursor-pointer group hover:border-green-500 shadow-inner text-center transition-all leading-none" onClick={() => fileInputRef.current.click()}>
         {img ? <img src={img} className="absolute inset-0 w-full h-full object-cover leading-none" alt="Selected" /> : 
           <div className="text-center space-y-6 animate-in zoom-in leading-none">
@@ -363,7 +353,7 @@ const ListView = ({ title, items, isStadium }) => (
         )) : (
           <div className="py-20 md:py-32 text-center space-y-8 bg-white rounded-[3rem] md:rounded-[5rem] border-2 border-dashed border-slate-100 shadow-inner flex flex-col items-center leading-none text-right">
              <div className="p-8 bg-slate-50 rounded-full text-slate-200 animate-pulse leading-none text-right"><Building2 size={100} className="leading-none text-right"/></div>
-             <div className="space-y-4 text-center leading-none text-right"><p className="text-2xl md:text-3xl font-black text-slate-300 tracking-tighter uppercase leading-none italic text-center leading-none text-right">{isStadium ? 'لا توجد تطويرات للملاعب حالياً' : 'لا يوجد مشاريع نشطة'}</p><p className="text-slate-400 font-bold text-xs md:text-sm max-w-sm mx-auto leading-relaxed italic text-center leading-none text-right">سيتم تحديث القائمة فور توفر تقارير ميدانية معتمدة.</p></div>
+             <div className="space-y-4 text-center leading-none text-right"><p className="text-2xl md:text-3xl font-black text-slate-300 tracking-tighter uppercase leading-none italic text-center leading-none text-right">{isStadium ? 'لا توجد تطويرات للملاعب حالياً' : 'لا يوجد مشاريع نشطة'}</p><p className="text-slate-400 font-bold text-xs md:text-sm max-w-sm mx-auto leading-relaxed italic text-center leading-none text-right">سيتم تحديث القائمة فور توفر تقارير ميدانية معتمدة من اللجنة الفنية للمنصة.</p></div>
           </div>
         )}
      </div>
@@ -422,7 +412,7 @@ const Footer = ({ setView }) => (
               <p className="font-black text-slate-600 text-sm">sales@mcc-jo.com</p>
             </div>
             <div className="flex items-start gap-3 justify-start group cursor-pointer text-right">
-              <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg group-hover:bg-indigo-600 group-hover:text-white transition-all mt-1"><MapPinIcon size={18}/></div>
+              <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg group-hover:bg-indigo-600 group-hover:text-white transition-all mt-1"><MapIcon size={18}/></div>
               <div className="space-y-1">
                 <p className="font-black text-slate-600 text-sm leading-none">عمان، الجاردنز، شارع وصفي التل</p>
                 <p className="text-[10px] text-slate-400 font-bold leading-tight">Mosa Center, No:78</p>
@@ -468,6 +458,7 @@ const Footer = ({ setView }) => (
               <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
            </div>
         </div>
+
       </div>
       <div className="mt-16 pt-8 border-t border-slate-50 flex flex-col md:flex-row justify-between items-center gap-4">
          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] italic">© 2024 Tareeqna Jordan | All Rights Reserved</p>
@@ -479,6 +470,56 @@ const Footer = ({ setView }) => (
       </div>
     </div>
   </footer>
+);
+
+const LoadingScreen = () => (
+  <div className="h-screen flex flex-col items-center justify-center bg-[#F8FAFC] gap-6 animate-in fade-in text-center px-10 leading-none text-right">
+    <div className="relative leading-none text-right text-right">
+      <div className="w-16 h-16 md:w-20 md:h-20 border-4 border-green-100 border-t-green-600 rounded-full animate-spin leading-none text-right"></div>
+      <TrendingUp className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-green-600 leading-none text-right" size={32} />
+    </div>
+    <div className="space-y-2 leading-none text-right text-right">
+       <p className="text-xl md:text-2xl font-black text-slate-800 italic uppercase leading-none tracking-tighter text-right">طريق<span className="text-green-600 leading-none text-right">نا</span></p>
+       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none text-right text-right">المنصة الوطنية الأردنية</p>
+    </div>
+  </div>
+);
+
+const DonationPopup = ({ item, onClose, onConfirm }) => {
+  const [amount, setAmount] = useState('10');
+  const [name, setName] = useState('');
+  const [anon, setAnon] = useState(false);
+  return (
+    <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-2xl z-[100] flex items-end md:items-center justify-center p-4 md:p-6 animate-in fade-in duration-300 leading-none text-right">
+      <div className="bg-white rounded-t-[3rem] md:rounded-[4rem] w-full max-w-lg p-8 md:p-16 space-y-8 shadow-2xl animate-in slide-in-from-bottom-20 md:zoom-in-95 text-right leading-none text-right text-right text-right">
+        <div className="flex justify-between items-center leading-none text-right w-full leading-none text-right text-right text-right text-right"><h3 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tighter italic uppercase text-right leading-none text-right text-right text-right text-right">ساهم في البناء</h3><button onClick={onClose} className="p-3 bg-slate-100 rounded-full shadow-sm active:scale-90 leading-none text-right text-right text-right text-right text-right"><X size={20} className="leading-none text-right text-right text-right text-right"/></button></div>
+        <div className="bg-green-50 p-6 md:p-10 rounded-[2rem] border border-green-100 shadow-inner text-center leading-none text-right text-right text-right text-right"><p className="font-black text-2xl md:text-3xl leading-[1.1] tracking-tight italic text-center leading-none text-right text-right text-right text-right">{item.item.location}</p></div>
+        <div className="space-y-4 md:space-y-6 leading-none text-right text-right text-right text-right text-right"><label className="text-xs font-black text-slate-400 mr-2 uppercase tracking-[0.3em] opacity-70 leading-none block italic text-right w-full leading-none text-right text-right text-right text-right">Contribution (JOD)</label><input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full p-8 md:p-10 bg-slate-50 border-2 border-transparent rounded-[2rem] md:rounded-[3rem] font-black text-center text-4xl md:text-6xl outline-none focus:border-green-600 focus:bg-white transition-all shadow-inner text-slate-900 italic leading-none text-right text-right text-right text-right" /></div>
+        <div className="space-y-6 md:space-y-8 text-right leading-none text-right text-right text-right text-right text-right text-right text-right text-right"><input placeholder="الاسم الكامل" disabled={anon} className="w-full p-6 md:p-8 bg-white border-2 border-slate-100 rounded-[1.8rem] md:rounded-[2.5rem] font-black outline-none focus:border-green-600 disabled:bg-slate-50 transition-all text-xl md:text-2xl shadow-sm text-right leading-none text-right text-right text-right text-right text-right" value={name} onChange={e => setName(e.target.value)} /><label className="flex items-center gap-4 md:gap-6 cursor-pointer group justify-end leading-none text-right text-right text-right text-right text-right text-right text-right text-right"><span className="text-xl md:text-2xl font-black text-slate-500 group-hover:text-slate-800 transition-colors italic leading-none text-right text-right text-right text-right text-right text-right text-right text-right">التبرع بهوية مجهولة</span><input type="checkbox" className="hidden" checked={anon} onChange={e => setAnon(e.target.checked)} /><div className={`w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl border-4 flex items-center justify-center transition-all leading-none ${anon ? 'bg-green-600 border-green-600 shadow-xl' : 'bg-white border-slate-200'}`}>{anon && <CheckCircle2 size={24} className="text-white leading-none text-right text-right text-right" />}</div></label></div>
+        <button onClick={() => onConfirm({ amount, donorName: name, anonymousName: anon, itemId: item.item.id, type: item.type })} className="w-full bg-amber-500 text-white py-8 md:py-10 rounded-[2rem] md:rounded-[3rem] font-black text-3xl md:text-4xl shadow-xl shadow-amber-200 active:scale-95 transition-all flex items-center justify-center gap-4 group leading-none italic uppercase text-center text-right leading-none text-right text-right text-right text-right text-right text-right text-right">تأكيد المساهمة <CheckCircle size={28} className="group-hover:scale-110 transition-transform leading-none text-right" /></button>
+      </div>
+    </div>
+  );
+};
+
+const InfoPopup = ({ item, onClose }) => (
+  <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-3xl z-[100] flex items-center justify-center p-4 md:p-6 animate-in fade-in leading-none text-right text-right">
+    <div className="bg-white rounded-[3rem] md:rounded-[6rem] w-full max-w-4xl p-8 md:p-20 space-y-10 shadow-2xl relative overflow-hidden animate-in zoom-in ring-1 ring-slate-100 text-right leading-none text-right text-right text-right">
+      <button onClick={onClose} className="absolute top-6 right-6 md:top-12 md:right-12 p-4 bg-white/50 backdrop-blur-md rounded-full text-slate-800 z-20 border border-slate-200 shadow-xl active:scale-90 leading-none text-right text-right text-right"><X size={32} className="leading-none text-right text-right"/></button>
+      <div className="relative group text-right leading-none text-right text-right">
+        <img src={item.img} className="w-full h-[300px] md:h-[550px] rounded-[2.5rem] md:rounded-[5rem] object-cover shadow-2xl transition-transform duration-[3s] group-hover:scale-105 leading-none text-right text-right text-right" alt="Detail" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent rounded-[2.5rem] md:rounded-[5rem] leading-none text-right text-right"></div>
+        <div className="absolute bottom-6 right-6 md:bottom-12 md:right-12 leading-none text-right text-right text-right text-right">
+          <p className="text-slate-200 font-bold text-base md:text-lg mb-4 flex items-center gap-3 justify-end uppercase tracking-[0.3em] leading-none italic text-right leading-none text-right text-right text-right text-right text-right"><MapPin size={24} className="text-green-500 leading-none text-right text-right text-right"/> {item.location}</p>
+          <h3 className="text-3xl md:text-6xl font-black text-white leading-tight tracking-tighter uppercase italic text-right leading-none text-right text-right text-right text-right text-right">التفاصيل الفنية</h3>
+        </div>
+      </div>
+      <div className="bg-slate-50 p-8 md:p-12 rounded-[2.5rem] md:rounded-[4.5rem] border border-slate-100 shadow-inner space-y-8 text-right leading-relaxed text-right text-right text-right text-right">
+         <div className="inline-flex items-center gap-3 bg-indigo-600 text-white px-6 py-2 md:px-8 md:py-3 rounded-full font-black text-base md:text-lg shadow-xl leading-none italic text-right text-right leading-none text-right text-right text-right text-right"><ShieldCheck size={24} className="leading-none text-right text-right text-right"/> تقرير هندسي معتمد</div>
+         <p className="text-slate-600 text-xl md:text-3xl leading-[1.6] font-medium tracking-tight text-right leading-relaxed italic text-right text-right text-right text-right text-right">يخضع هذا الموقع لرقابة مهندسي المساحة والتعبيد في أمانة عمان الكبرى لضمان جودة التعبيد لأكثر من 15 عاماً ومقاومة كافة الظروف الجوية القاسية.</p>
+      </div>
+    </div>
+  </div>
 );
 
 const LeaderboardView = ({ donations, onBack }) => {
@@ -531,56 +572,6 @@ const PartnerPortalView = ({ onBack }) => (
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-600 rounded-full blur-[140px] opacity-10 leading-none text-right text-right"></div>
         <div className="relative z-10 space-y-8 text-center leading-none text-right text-center text-center"><Lock className="mx-auto text-indigo-400 leading-none text-right text-right" size={60} /><h3 className="text-3xl md:text-5xl font-black text-white leading-none italic uppercase text-center text-center text-center">المؤسسات المعتمدة</h3><p className="text-slate-400 font-medium leading-relaxed max-w-xl mx-auto text-base md:text-xl italic opacity-80 text-center leading-relaxed italic text-center text-center">بوابة حصرياً لمسؤولي أمانة عمان الكبرى والبلديات لإدارة المشاريع ميدانياً ومتابعة الأثر.</p><div className="flex flex-col gap-5 max-w-sm mx-auto pt-10 text-center text-center text-center"><input type="password" placeholder="كود الدخول الموحد" className="p-6 md:p-8 bg-white/5 border border-white/10 rounded-[1.5rem] md:rounded-[2.5rem] outline-none focus:border-indigo-500 text-center font-black text-white text-2xl md:text-3xl placeholder:text-slate-800 shadow-inner text-right leading-none transition-all text-center text-center" /><button className="bg-indigo-600 text-white py-6 md:py-8 rounded-[1.8rem] md:rounded-[2.5rem] font-black text-3xl md:text-4xl shadow-xl hover:bg-indigo-700 active:scale-95 leading-none transition-all uppercase text-center text-center">دخول</button></div></div>
      </div>
-  </div>
-);
-
-const LoadingScreen = () => (
-  <div className="h-screen flex flex-col items-center justify-center bg-[#F8FAFC] gap-6 animate-in fade-in text-center px-10 leading-none text-right">
-    <div className="relative leading-none text-right text-right">
-      <div className="w-16 h-16 md:w-20 md:h-20 border-4 border-green-100 border-t-green-600 rounded-full animate-spin leading-none text-right"></div>
-      <TrendingUp className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-green-600 leading-none text-right" size={32} />
-    </div>
-    <div className="space-y-2 leading-none text-right text-right">
-       <p className="text-xl md:text-2xl font-black text-slate-800 italic uppercase leading-none tracking-tighter text-right">طريق<span className="text-green-600 leading-none text-right">نا</span></p>
-       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none text-right text-right">المنصة الوطنية الأردنية</p>
-    </div>
-  </div>
-);
-
-const DonationPopup = ({ item, onClose, onConfirm }) => {
-  const [amount, setAmount] = useState('10');
-  const [name, setName] = useState('');
-  const [anon, setAnon] = useState(false);
-  return (
-    <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-2xl z-[100] flex items-end md:items-center justify-center p-4 md:p-6 animate-in fade-in duration-300 leading-none text-right">
-      <div className="bg-white rounded-t-[3rem] md:rounded-[4rem] w-full max-w-lg p-8 md:p-16 space-y-8 shadow-2xl animate-in slide-in-from-bottom-20 md:zoom-in-95 text-right leading-none text-right text-right text-right">
-        <div className="flex justify-between items-center leading-none text-right w-full leading-none text-right text-right text-right text-right"><h3 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tighter italic uppercase text-right leading-none text-right text-right text-right text-right">ساهم في البناء</h3><button onClick={onClose} className="p-3 bg-slate-100 rounded-full shadow-sm active:scale-90 leading-none text-right text-right text-right text-right text-right"><X size={20} className="leading-none text-right text-right text-right text-right"/></button></div>
-        <div className="bg-green-50 p-6 md:p-10 rounded-[2rem] border border-green-100 shadow-inner text-center leading-none text-right text-right text-right text-right"><p className="font-black text-2xl md:text-3xl leading-[1.1] tracking-tight italic text-center leading-none text-right text-right text-right text-right">{item.item.location}</p></div>
-        <div className="space-y-4 md:space-y-6 leading-none text-right text-right text-right text-right text-right"><label className="text-xs font-black text-slate-400 mr-2 uppercase tracking-[0.3em] opacity-70 leading-none block italic text-right w-full leading-none text-right text-right text-right text-right">Contribution (JOD)</label><input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full p-8 md:p-10 bg-slate-50 border-2 border-transparent rounded-[2rem] md:rounded-[3rem] font-black text-center text-4xl md:text-6xl outline-none focus:border-green-600 focus:bg-white transition-all shadow-inner text-slate-900 italic leading-none text-right text-right text-right text-right" /></div>
-        <div className="space-y-6 md:space-y-8 text-right leading-none text-right text-right text-right text-right text-right text-right text-right text-right"><input placeholder="الاسم الكامل" disabled={anon} className="w-full p-6 md:p-8 bg-white border-2 border-slate-100 rounded-[1.8rem] md:rounded-[2.5rem] font-black outline-none focus:border-green-600 disabled:bg-slate-50 transition-all text-xl md:text-2xl shadow-sm text-right leading-none text-right text-right text-right text-right text-right" value={name} onChange={e => setName(e.target.value)} /><label className="flex items-center gap-4 md:gap-6 cursor-pointer group justify-end leading-none text-right text-right text-right text-right text-right text-right text-right text-right"><span className="text-xl md:text-2xl font-black text-slate-500 group-hover:text-slate-800 transition-colors italic leading-none text-right text-right text-right text-right text-right text-right text-right text-right">التبرع بهوية مجهولة</span><input type="checkbox" className="hidden" checked={anon} onChange={e => setAnon(e.target.checked)} /><div className={`w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl border-4 flex items-center justify-center transition-all leading-none ${anon ? 'bg-green-600 border-green-600 shadow-xl' : 'bg-white border-slate-200'}`}>{anon && <CheckCircle2 size={24} className="text-white leading-none text-right text-right text-right" />}</div></label></div>
-        <button onClick={() => onConfirm({ amount, donorName: name, anonymousName: anon, itemId: item.item.id, type: item.type })} className="w-full bg-amber-500 text-white py-8 md:py-10 rounded-[2rem] md:rounded-[3rem] font-black text-3xl md:text-4xl shadow-xl shadow-amber-200 active:scale-95 transition-all flex items-center justify-center gap-4 group leading-none italic uppercase text-center text-right leading-none text-right text-right text-right text-right text-right text-right text-right">تأكيد المساهمة <CheckCircle size={28} className="group-hover:scale-110 transition-transform leading-none text-right" /></button>
-      </div>
-    </div>
-  );
-};
-
-const InfoPopup = ({ item, onClose }) => (
-  <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-3xl z-[100] flex items-center justify-center p-4 md:p-6 animate-in fade-in leading-none text-right text-right">
-    <div className="bg-white rounded-[3rem] md:rounded-[6rem] w-full max-w-4xl p-8 md:p-20 space-y-10 shadow-2xl relative overflow-hidden animate-in zoom-in ring-1 ring-slate-100 text-right leading-none text-right text-right text-right">
-      <button onClick={onClose} className="absolute top-6 right-6 md:top-12 md:right-12 p-4 bg-white/50 backdrop-blur-md rounded-full text-slate-800 z-20 border border-slate-200 shadow-xl active:scale-90 leading-none text-right text-right text-right"><X size={32} className="leading-none text-right text-right"/></button>
-      <div className="relative group text-right leading-none text-right text-right">
-        <img src={item.img} className="w-full h-[300px] md:h-[550px] rounded-[2.5rem] md:rounded-[5rem] object-cover shadow-2xl transition-transform duration-[3s] group-hover:scale-105 leading-none text-right text-right text-right" alt="Detail" />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent rounded-[2.5rem] md:rounded-[5rem] leading-none text-right text-right"></div>
-        <div className="absolute bottom-6 right-6 md:bottom-12 md:right-12 leading-none text-right text-right text-right text-right">
-          <p className="text-slate-200 font-bold text-base md:text-lg mb-4 flex items-center gap-3 justify-end uppercase tracking-[0.3em] leading-none italic text-right leading-none text-right text-right text-right text-right text-right"><MapPin size={24} className="text-green-500 leading-none text-right text-right text-right"/> {item.location}</p>
-          <h3 className="text-3xl md:text-6xl font-black text-white leading-tight tracking-tighter uppercase italic text-right leading-none text-right text-right text-right text-right text-right">التفاصيل الفنية</h3>
-        </div>
-      </div>
-      <div className="bg-slate-50 p-8 md:p-12 rounded-[2.5rem] md:rounded-[4.5rem] border border-slate-100 shadow-inner space-y-8 text-right leading-relaxed text-right text-right text-right text-right">
-         <div className="inline-flex items-center gap-3 bg-indigo-600 text-white px-6 py-2 md:px-8 md:py-3 rounded-full font-black text-base md:text-lg shadow-xl leading-none italic text-right text-right leading-none text-right text-right text-right text-right"><ShieldCheck size={24} className="leading-none text-right text-right text-right"/> تقرير هندسي معتمد</div>
-         <p className="text-slate-600 text-xl md:text-3xl leading-[1.6] font-medium tracking-tight text-right leading-relaxed italic text-right text-right text-right text-right text-right">يخضع هذا الموقع لرقابة مهندسي المساحة والتعبيد في أمانة عمان الكبرى لضمان جودة التعبيد لأكثر من 15 عاماً ومقاومة كافة الظروف الجوية القاسية.</p>
-      </div>
-    </div>
   </div>
 );
 
