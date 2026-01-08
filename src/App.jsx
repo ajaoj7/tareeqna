@@ -5,7 +5,8 @@ import {
   Plus, Wallet, Sparkles, Loader2, X, Phone, ShieldCheck, Trophy, 
   Home, Star, Building, Map as MapIcon, Search,
   Lock, ShieldAlert, Share2, Globe, Send, ExternalLink,
-  UserCheck, User, CheckCircle, ArrowRight, AlertCircle, Smartphone, HardHat, Mail, Facebook, Twitter, Instagram
+  UserCheck, User, CheckCircle, ArrowRight, AlertCircle, Smartphone, HardHat, Mail, Facebook, Twitter, Instagram,
+  Map as MapPinIcon, Bot, MessageCircle
 } from 'lucide-react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
@@ -16,7 +17,7 @@ import {
   getAuth, signInAnonymously, onAuthStateChanged 
 } from 'firebase/auth';
 
-// --- إعدادات Firebase المعتمدة ---
+// --- إعدادات Firebase ---
 const firebaseConfig = {
   apiKey: "AIzaSyCyuIFbQQCzkeaiZiuscS-WfY1Ajs2wAVU",
   authDomain: "tareeqna-57b74.firebaseapp.com",
@@ -27,6 +28,9 @@ const firebaseConfig = {
   measurementId: "G-Q3RRP2VHES"
 };
 
+// مفتاح Gemini AI
+const GEMINI_KEY = "AIzaSyDlCh6zXjGf_yJGdotpXY3eM0d28oAFfrQ";
+
 const appId = "tareeqna_production_final_v1";
 
 let app, auth, db;
@@ -35,6 +39,18 @@ try {
   auth = getAuth(app);
   db = getFirestore(app);
 } catch (error) { console.warn("Firebase wait..."); }
+
+const GOOGLE_MAPS_KEY = ""; 
+
+// --- صور نشمي (الوضعيات) ---
+const NASHMI_POSES = {
+  welcome: "https://i.ibb.co/8nnWQtJ5/1-Welcome-Pose.png",
+  thinking: "https://i.ibb.co/4w6tYtqw/2-Thinking-Pose.png",
+  explaining: "https://i.ibb.co/xqDg9M42/3-Explaining-Pose.png",
+  success: "https://i.ibb.co/R4hyNNfN/4-Success-Pose.png",
+  confused: "https://i.ibb.co/Ps56xNzJ/5-Confused-Pose.png",
+  alert: "https://i.ibb.co/BHKpz558/6-Alert-Pose.png"
+};
 
 const App = () => {
   const [view, setView] = useState('landing'); 
@@ -96,12 +112,12 @@ const App = () => {
           <div className="bg-green-600 p-2 md:p-2.5 rounded-xl md:rounded-2xl text-white shadow-lg group-hover:rotate-6 transition-all">
             <TrendingUp size={20} className="md:w-6 md:h-6" strokeWidth={2.5} />
           </div>
-          {/* تم استبدال الـ SVG بالنص العادي المنسق لضمان الظهور بجانب الأيقونة */}
-          <div className="flex flex-col leading-none select-none">
-            <h1 className="text-xl md:text-3xl font-black text-slate-900 tracking-tighter italic whitespace-nowrap leading-none" style={{ fontFamily: "'Cairo', sans-serif" }}>
+          <div className="leading-none select-none">
+            {/* تم الإصلاح: نص عادي بدون فلكس لضمان الاتصال */}
+            <h1 className="text-xl md:text-3xl font-black text-slate-900 tracking-tighter italic whitespace-nowrap leading-none mt-1">
               طريق<span className="text-green-600">نا</span>
             </h1>
-            <p className="text-[7px] md:text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Jordan Road Guard</p>
+            <p className="text-[7px] md:text-[8px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Jordan Road Guard</p>
           </div>
         </div>
         <button onClick={() => setView('leaderboard')} className="p-2 md:p-2.5 bg-amber-50 text-amber-600 rounded-xl border border-amber-100 active:scale-95 transition-all"><Trophy size={20}/></button>
@@ -118,6 +134,9 @@ const App = () => {
       </main>
 
       <Footer setView={setView} />
+      
+      {/* نشمي AI - مربوط وحقيقي */}
+      <NashmiAI />
 
       {/* Floating Navigation */}
       <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[94%] max-w-lg bg-slate-900/95 backdrop-blur-2xl rounded-[2.5rem] md:rounded-[3rem] p-2 md:p-3 flex justify-around items-center z-[70] shadow-2xl border border-white/10">
@@ -148,6 +167,120 @@ const App = () => {
   );
 };
 
+// --- Nashmi AI Component (Active & Animated) ---
+const NashmiAI = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState([
+    { role: 'bot', text: 'يا هلا! أنا نشمي 🇯🇴، مساعدك الذكي لمنصة طريقنا. كيف بقدر أساعدك اليوم؟' }
+  ]);
+  const [input, setInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [pose, setPose] = useState(NASHMI_POSES.welcome);
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+    const userMsg = input;
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    setIsTyping(true);
+    setPose(NASHMI_POSES.thinking);
+
+    try {
+      // الاتصال بـ Gemini API
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `أنت "نشمي"، مساعد ذكي لمنصة "طريقنا الوطنية" الأردنية.
+              مهمتك: مساعدة المستخدمين في (الإبلاغ عن الحفر، التبرع للطرق والملاعب، الاستفسار عن الشركاء).
+              الأسلوب: لهجة أردنية محترفة، ودودة، ومختصرة.
+              القيود: إذا كان السؤال خارج نطاق المنصة (مثل سياسة، دين، رياضة عامة، نكت)، اعتذر بأدب.
+              سؤال المستخدم: ${userMsg}`
+            }]
+          }]
+        })
+      });
+
+      const data = await response.json();
+      let botReply = "عذراً، صار في خلل بسيط. ممكن تعيد السؤال؟";
+      
+      if (data.candidates && data.candidates[0].content.parts[0].text) {
+          botReply = data.candidates[0].content.parts[0].text;
+          setPose(NASHMI_POSES.explaining);
+      } else {
+          setPose(NASHMI_POSES.confused);
+      }
+
+      setMessages(prev => [...prev, { role: 'bot', text: botReply }]);
+      setTimeout(() => setPose(NASHMI_POSES.welcome), 5000);
+
+    } catch (e) {
+      setMessages(prev => [...prev, { role: 'bot', text: "يبدو أن الاتصال ضعيف. حاول مرة أخرى." }]);
+      setPose(NASHMI_POSES.alert);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  return (
+    <div className="fixed bottom-24 right-4 z-[90] flex flex-col items-end pointer-events-none">
+      {isOpen && (
+        <div className="mb-4 w-80 bg-white rounded-3xl shadow-2xl border-2 border-slate-100 overflow-hidden pointer-events-auto animate-in slide-in-from-bottom-10 fade-in duration-300">
+          <div className="bg-slate-900 p-4 flex items-center justify-between text-white">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white rounded-full overflow-hidden border-2 border-green-500">
+                 <img src={NASHMI_POSES.welcome} alt="Nashmi" className="w-full h-full object-cover" />
+              </div>
+              <div className="leading-none text-right">
+                <p className="font-black text-sm">نشمي AI</p>
+                <p className="text-[10px] text-green-400 font-bold">مساعد طريقنا</p>
+              </div>
+            </div>
+            <button onClick={() => setIsOpen(false)} className="hover:bg-white/20 p-1 rounded-full transition-colors"><X size={18}/></button>
+          </div>
+          <div className="h-72 bg-slate-50 p-4 overflow-y-auto space-y-3">
+            {messages.map((msg, idx) => (
+              <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {msg.role === 'bot' && <div className="w-6 h-6 rounded-full overflow-hidden mr-2 mt-1 shrink-0"><img src={pose} className="w-full h-full object-cover"/></div>}
+                <div className={`max-w-[85%] p-3 rounded-2xl text-xs font-bold leading-relaxed ${msg.role === 'user' ? 'bg-green-600 text-white rounded-br-none' : 'bg-white text-slate-700 shadow-sm rounded-bl-none border border-slate-100'}`}>
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+            {isTyping && <div className="text-[10px] text-slate-400 font-bold animate-pulse mr-8">نشمي يكتب...</div>}
+          </div>
+          <div className="p-3 bg-white border-t flex gap-2">
+            <input 
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+              placeholder="اكتب سؤالك هنا..."
+              className="flex-1 bg-slate-100 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-green-500 text-right"
+            />
+            <button onClick={handleSend} className="p-3 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all"><Send size={16} className="rotate-180"/></button>
+          </div>
+        </div>
+      )}
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="pointer-events-auto group relative w-20 h-20 transition-transform hover:scale-105 active:scale-95"
+      >
+        {!isOpen && <div className="absolute -top-10 right-0 bg-white px-3 py-1 rounded-xl shadow-lg border border-green-100 animate-bounce mb-2"><p className="text-[10px] font-black text-slate-800">مساعدة؟</p></div>}
+        <div className="absolute inset-0 bg-green-500 rounded-full blur-lg opacity-40 group-hover:opacity-60 animate-pulse"></div>
+        <div className="relative w-full h-full">
+           <img 
+             src={pose} 
+             alt="Open Chat" 
+             className="w-full h-full object-contain drop-shadow-xl" 
+           />
+        </div>
+      </button>
+    </div>
+  );
+};
+
 // --- Landing View ---
 const LandingView = ({ setView, reports, sponsors }) => {
   const categories = useMemo(() => ({
@@ -159,8 +292,6 @@ const LandingView = ({ setView, reports, sponsors }) => {
   return (
     <div className="py-6 md:py-10 animate-in fade-in duration-1000">
       <div className="flex flex-col lg:flex-row gap-8">
-        
-        {/* SIDEBAR LEFT */}
         <aside className="w-full lg:w-72 space-y-6 lg:order-1 order-2">
            <div className="bg-white p-6 md:p-8 rounded-[2.5rem] md:rounded-[3rem] border border-slate-100 shadow-sm sticky top-28">
               <div className="space-y-1 mb-8 border-r-4 border-green-600 pr-4 text-right">
@@ -182,7 +313,6 @@ const LandingView = ({ setView, reports, sponsors }) => {
            </div>
         </aside>
 
-        {/* MAIN FEED */}
         <div className="flex-1 space-y-12 md:space-y-20 lg:order-2 order-1 text-right">
           <section className="bg-slate-900 rounded-[2.5rem] md:rounded-[3.5rem] p-8 md:p-16 text-white relative overflow-hidden shadow-2xl border border-white/5 text-right">
             <div className="relative z-10 max-w-2xl space-y-6 text-right leading-none">
@@ -238,13 +368,23 @@ const HomeSection = ({ title, items, setView, icon, isSuccess }) => (
   </div>
 );
 
-// --- Report View ---
+// --- Report View (Fixed: Original Upload Method + Compression) ---
 const ReportView = ({ onComplete, user }) => {
   const [img, setImg] = useState(null);
   const [location, setLocation] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [isPC, setIsPC] = useState(false);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    const checkDevice = () => {
+      const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+      if (/android/i.test(userAgent) || /iPad|iPhone|iPod/.test(userAgent)) return false;
+      return true;
+    };
+    setIsPC(checkDevice());
+  }, []);
 
   const compressImage = (base64) => {
     return new Promise((resolve) => {
@@ -261,6 +401,7 @@ const ReportView = ({ onComplete, user }) => {
   };
 
   const handleSubmission = async () => {
+    if (isPC) return; 
     if (!location.trim()) return setError("يرجى كتابة عنوان الشارع بدقة.");
     if (!img) return setError("يجب إرفاق صورة للضرر.");
     
@@ -299,44 +440,60 @@ const ReportView = ({ onComplete, user }) => {
     <div className="p-4 md:p-10 space-y-8 animate-in slide-in-from-bottom-12 max-w-4xl mx-auto text-right leading-none">
       <div className="flex items-center justify-between"><h2 className="text-3xl font-black text-slate-800 tracking-tighter leading-none text-right">تبليغ جديد</h2><button onClick={onComplete} className="p-2 md:p-3 bg-white rounded-full text-slate-400 border border-slate-100 shadow-sm leading-none"><X/></button></div>
       
-      <div className="bg-white p-8 md:p-10 rounded-[3rem] border-4 border-dashed border-slate-200 flex flex-col items-center justify-center min-h-[350px] relative overflow-hidden cursor-pointer group hover:border-green-500 shadow-inner text-center transition-all leading-none" onClick={() => fileInputRef.current.click()}>
-        {img ? <img src={img} className="absolute inset-0 w-full h-full object-cover leading-none" alt="Selected" /> : 
-          <div className="text-center space-y-6 animate-in zoom-in leading-none">
-             <div className="p-8 bg-slate-50 text-slate-300 rounded-[2.5rem] group-hover:bg-green-50 group-hover:text-green-500 transition-all mx-auto w-fit shadow-inner leading-none"><Camera size={60} className="leading-none"/></div>
-             <div className="leading-none"><p className="text-2xl font-black text-slate-700 leading-none italic uppercase text-center leading-none">إرفاق صورة</p><p className="text-sm font-bold text-slate-400 mt-4 max-w-xs mx-auto italic leading-none text-center leading-none">اضغط هنا لفتح الكاميرا أو الاستوديو.</p></div>
-          </div>
-        }
-        <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={(e) => {
-          const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = () => setImg(r.result); r.readAsDataURL(f); }
-        }} />
-      </div>
-
-      <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6 relative text-right leading-none">
-         <div className="space-y-4 leading-none text-right">
-            <label className={`text-xs font-black uppercase tracking-widest flex items-center gap-2 leading-none justify-end text-right ${error ? 'text-red-600 animate-pulse' : 'text-slate-400'}`}>
-               العنوان <ShieldCheck size={14} className={error ? 'text-red-600' : 'text-indigo-600'}/>
-            </label>
-            <div className="relative text-right">
-              <MapPin className={`absolute right-6 top-1/2 -translate-y-1/2 transition-colors leading-none ${error ? 'text-red-600' : 'text-green-600'}`} size={24}/>
-              <input 
-                placeholder="اسم الشارع أو المنطقة..." 
-                className={`w-full p-6 md:p-8 pr-14 md:pr-16 bg-slate-50 border-4 rounded-[2rem] font-black outline-none transition-all text-xl md:text-2xl shadow-inner text-right leading-none ${error ? 'border-red-500 bg-red-50' : 'border-transparent focus:border-green-600 focus:bg-white'}`} 
-                value={location} 
-                onChange={e => { setLocation(e.target.value); if(e.target.value.trim()) setError(null); }}
-              />
-            </div>
-            {error && (
-              <div className="flex items-start gap-3 bg-red-100 text-red-600 p-5 rounded-[1.8rem] border-2 border-red-200 animate-in slide-in-from-top-4 text-right leading-none text-right">
-                <AlertCircle size={24} className="shrink-0 mt-1 leading-none text-right" />
-                <p className="font-black text-sm md:text-lg leading-snug text-right leading-none text-right">{error}</p>
+      {isPC ? (
+        <div className="bg-slate-900 p-10 rounded-[3rem] text-center space-y-6 shadow-2xl relative overflow-hidden">
+           <div className="relative z-10 flex flex-col items-center">
+              <Smartphone className="text-green-500 w-20 h-20 mb-4 animate-pulse" />
+              <h3 className="text-3xl font-black text-white">عذراً، يمنع الرفع من الحاسوب</h3>
+              <p className="text-slate-400 text-lg leading-relaxed max-w-md">لضمان مصداقية البلاغات، يجب استخدام كاميرا الهاتف المباشرة من موقع الحدث.</p>
+              <div className="mt-8 bg-white p-4 rounded-2xl">
+                 <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://tareeqna.vercel.app/" className="w-32 h-32" alt="Scan QR" />
               </div>
-            )}
-         </div>
-      </div>
+              <p className="text-xs text-slate-500 mt-2 font-bold uppercase tracking-widest">امسح الكود للإكمال من هاتفك</p>
+           </div>
+        </div>
+      ) : (
+        <>
+          <div className="bg-white p-8 md:p-10 rounded-[3rem] border-4 border-dashed border-slate-200 flex flex-col items-center justify-center min-h-[350px] relative overflow-hidden cursor-pointer group hover:border-green-500 shadow-inner text-center transition-all leading-none" onClick={() => fileInputRef.current.click()}>
+            {img ? <img src={img} className="absolute inset-0 w-full h-full object-cover leading-none" alt="Selected" /> : 
+              <div className="text-center space-y-6 animate-in zoom-in leading-none">
+                 <div className="p-8 bg-slate-50 text-slate-300 rounded-[2.5rem] group-hover:bg-green-50 group-hover:text-green-500 transition-all mx-auto w-fit shadow-inner leading-none"><Camera size={60} className="leading-none"/></div>
+                 <div className="leading-none"><p className="text-2xl font-black text-slate-700 leading-none italic uppercase text-center leading-none">إرفاق صورة</p><p className="text-sm font-bold text-slate-400 mt-4 max-w-xs mx-auto italic leading-none text-center leading-none">اضغط هنا لفتح الكاميرا أو الاستوديو.</p></div>
+              </div>
+            }
+            <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={(e) => {
+              const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = () => setImg(r.result); r.readAsDataURL(f); }
+            }} />
+          </div>
 
-      <button onClick={handleSubmission} disabled={submitting} className="w-full bg-slate-900 text-white py-6 md:py-8 rounded-[2rem] font-black text-2xl md:text-4xl shadow-2xl active:scale-95 disabled:bg-slate-400 transition-all flex items-center justify-center gap-4 group leading-none text-center">
-        {submitting ? <Loader2 className="animate-spin" size={32}/> : <>نشر البلاغ <Send size={28} className="rotate-180 group-hover:rotate-0 transition-transform leading-none"/></>}
-      </button>
+          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6 relative text-right leading-none">
+             <div className="space-y-4 leading-none text-right">
+                <label className={`text-xs font-black uppercase tracking-widest flex items-center gap-2 leading-none justify-end text-right ${error ? 'text-red-600 animate-pulse' : 'text-slate-400'}`}>
+                   العنوان <ShieldCheck size={14} className={error ? 'text-red-600' : 'text-indigo-600'}/>
+                </label>
+                <div className="relative text-right">
+                  <MapPin className={`absolute right-6 top-1/2 -translate-y-1/2 transition-colors leading-none ${error ? 'text-red-600' : 'text-green-600'}`} size={24}/>
+                  <input 
+                    placeholder="اسم الشارع أو المنطقة..." 
+                    className={`w-full p-6 md:p-8 pr-14 md:pr-16 bg-slate-50 border-4 rounded-[2rem] font-black outline-none transition-all text-xl md:text-2xl shadow-inner text-right leading-none ${error ? 'border-red-500 bg-red-50' : 'border-transparent focus:border-green-600 focus:bg-white'}`} 
+                    value={location} 
+                    onChange={e => { setLocation(e.target.value); if(e.target.value.trim()) setError(null); }}
+                  />
+                </div>
+                {error && (
+                  <div className="flex items-start gap-3 bg-red-100 text-red-600 p-5 rounded-[1.8rem] border-2 border-red-200 animate-in slide-in-from-top-4 text-right leading-none text-right">
+                    <AlertCircle size={24} className="shrink-0 mt-1 leading-none text-right" />
+                    <p className="font-black text-sm md:text-lg leading-snug text-right leading-none text-right">{error}</p>
+                  </div>
+                )}
+             </div>
+          </div>
+
+          <button onClick={handleSubmission} disabled={submitting} className="w-full bg-slate-900 text-white py-6 md:py-8 rounded-[2rem] font-black text-2xl md:text-4xl shadow-2xl active:scale-95 disabled:bg-slate-400 transition-all flex items-center justify-center gap-4 group leading-none text-center">
+            {submitting ? <Loader2 className="animate-spin" size={32}/> : <>نشر البلاغ <Send size={28} className="rotate-180 group-hover:rotate-0 transition-transform leading-none"/></>}
+          </button>
+        </>
+      )}
     </div>
   );
 };
@@ -404,15 +561,15 @@ const Footer = ({ setView }) => (
           </div>
           <div className="space-y-4">
             <div className="flex items-center gap-3 justify-start group cursor-pointer">
-              <div className="p-2 bg-green-50 text-green-600 rounded-lg group-hover:bg-green-600 group-hover:text-white transition-all"><Phone size={18}/></div>
+              <div className="p-2 bg-green-50 text-green-600 rounded-lg"><Phone size={18}/></div>
               <p className="font-black text-slate-600 text-sm">0656 66970</p>
             </div>
             <div className="flex items-center gap-3 justify-start group cursor-pointer">
-              <div className="p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all"><Mail size={18}/></div>
+              <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Mail size={18}/></div>
               <p className="font-black text-slate-600 text-sm">sales@mcc-jo.com</p>
             </div>
             <div className="flex items-start gap-3 justify-start group cursor-pointer text-right">
-              <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg group-hover:bg-indigo-600 group-hover:text-white transition-all mt-1"><MapIcon size={18}/></div>
+              <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg mt-1"><MapPinIcon size={18}/></div>
               <div className="space-y-1">
                 <p className="font-black text-slate-600 text-sm leading-none">عمان، الجاردنز، شارع وصفي التل</p>
                 <p className="text-[10px] text-slate-400 font-bold leading-tight">Mosa Center, No:78</p>
