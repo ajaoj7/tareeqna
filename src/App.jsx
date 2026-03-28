@@ -3,21 +3,17 @@ import {
   MapPin, Camera, AlertTriangle, CheckCircle2, Users, 
   Building2, Heart, TrendingUp, Info, ChevronLeft, 
   Plus, Wallet, Sparkles, Loader2, X, Phone, ShieldCheck, Trophy, 
-  Home, Star, Building, Map as MapIcon, Search,
+  Home, Star, Map as MapIcon, Search,
   Lock, ShieldAlert, Share2, Globe, Send, ExternalLink,
   UserCheck, User, CheckCircle, ArrowRight, AlertCircle, Smartphone, HardHat, Mail, Facebook, Twitter, Instagram,
-  Map as MapPinIcon, Bot, MessageCircle
+  Map as MapPinIcon, Bot, MessageCircle, HandHeart, Copy, UserPlus, Calendar, CreditCard, BarChart3, PieChart, FileText, Activity
 } from 'lucide-react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { 
-  getFirestore, collection, addDoc, onSnapshot, doc, 
-  updateDoc, query, getDocs, getDoc, orderBy, limit 
-} from 'firebase/firestore';
-import { 
-  getAuth, signInAnonymously, onAuthStateChanged 
-} from 'firebase/auth';
+import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
-// --- إعدادات Firebase ---
+// --- 1. الإعدادات والبيانات الثابتة ---
+
 const firebaseConfig = {
   apiKey: "AIzaSyCyuIFbQQCzkeaiZiuscS-WfY1Ajs2wAVU",
   authDomain: "tareeqna-57b74.firebaseapp.com",
@@ -28,9 +24,7 @@ const firebaseConfig = {
   measurementId: "G-Q3RRP2VHES"
 };
 
-// مفتاح Gemini AI
 const GEMINI_KEY = "AIzaSyDlCh6zXjGf_yJGdotpXY3eM0d28oAFfrQ";
-
 const appId = "tareeqna_production_final_v1";
 
 let app, auth, db;
@@ -40,9 +34,17 @@ try {
   db = getFirestore(app);
 } catch (error) { console.warn("Firebase wait..."); }
 
-const GOOGLE_MAPS_KEY = ""; 
+const DEMO_REPORTS = [
+  { id: 'r1', type: 'road', location: 'عمان - شارع الجاردنز، قرب مجمع موسى', description: 'هبوط حاد في منتصف الشارع يسبب أزمة سير خانقة وأضراراً للمركبات.', img: 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&q=80&w=800', severity: 9, streetType: 'شارع تجاري حيوي', collected: 1250, goal: 2000, pitDepth: '15.5', impact: '25,000 مستفيد يومياً' },
+  { id: 'r2', type: 'road', location: 'إربد - دوار الدرة، الحي الشرقي', description: 'تشققات واسعة في الإسفلت وتجمع مياه الأمطار.', img: 'https://images.unsplash.com/photo-1584463635292-e48f7633d25d?auto=format&fit=crop&q=80&w=800', severity: 7, streetType: 'شارع سكني', collected: 120, goal: 500, pitDepth: '8.0', impact: '5,000 مستفيد يومياً' },
+  { id: 's1', type: 'stadium', location: 'ملعب القويسمة الشعبي', description: 'أرضية الملعب متهالكة وبحاجة لترميم العشب الصناعي والإنارة.', img: 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?auto=format&fit=crop&q=80&w=800', severity: 5, streetType: 'منشأة رياضية', collected: 1500, goal: 3000, pitDepth: 'صيانة شاملة', impact: 'يخدم 3 أندية محلية' },
+];
 
-// --- صور نشمي (الوضعيات) ---
+const DEMO_TEAMS = [
+  { id: 't1', teamName: 'نشامى العقبة', task: 'تنظيف الشاطئ الجنوبي', location: 'العقبة', members: 45, membersCount: 50, seasonPoints: 320, description: 'حملة لتنظيف الشاطئ من المخلفات البلاستيكية حمايةً للبيئة البحرية.' },
+  { id: 't2', teamName: 'سواعد عجلون', task: 'زراعة 100 شجرة', location: 'محمية عجلون', members: 20, membersCount: 25, seasonPoints: 210, description: 'مبادرة لزيادة الرقعة الخضراء في غابات عجلون.' },
+];
+
 const NASHMI_POSES = {
   welcome: "https://i.ibb.co/8nnWQtJ5/1-Welcome-Pose.png",
   thinking: "https://i.ibb.co/4w6tYtqw/2-Thinking-Pose.png",
@@ -52,236 +54,82 @@ const NASHMI_POSES = {
   alert: "https://i.ibb.co/BHKpz558/6-Alert-Pose.png"
 };
 
-const App = () => {
-  const [view, setView] = useState('landing'); 
-  const [user, setUser] = useState(null);
-  const [reports, setReports] = useState([]);
-  const [donations, setDonations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [showDonateModal, setShowDonateModal] = useState(false);
-  const [showInfoModal, setShowInfoModal] = useState(false);
+const VOLUNTEER_TASKS = [
+  { id: 1, label: 'تنظيف شارع حيوي', points: 2 },
+  { id: 2, label: 'تنظيف شاطئ / واجهة مائية', points: 3 },
+  { id: 3, label: 'تنظيف وتعقيم مسجد', points: 4 },
+  { id: 4, label: 'تنظيف حديقة عامة/مكان سياحي', points: 3 },
+  { id: 5, label: 'دهان أطاريف وأرصفة', points: 3 },
+  { id: 6, label: 'زراعة أشجار (تخضير)', points: 5 },
+];
 
-  useEffect(() => {
-    const injectResource = (tag, id, attr) => {
-      if (!document.getElementById(id)) {
-        const el = document.createElement(tag); el.id = id;
-        Object.assign(el, attr); document.head.appendChild(el);
-      }
-    };
-    injectResource('script', 'tailwind-cdn', { src: 'https://cdn.tailwindcss.com' });
-    injectResource('link', 'cairo-font', { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap' });
-  }, []);
+const SPONSORS = [
+  { id: 'sp1', name: 'البنك العربي', logo: 'https://api.dicebear.com/7.x/initials/svg?seed=AB', repairs: 52 },
+  { id: 'sp2', name: 'زين الأردن', logo: 'https://api.dicebear.com/7.x/initials/svg?seed=Zain', repairs: 41 },
+  { id: 'sp3', name: 'أورنج الأردن', logo: 'https://api.dicebear.com/7.x/initials/svg?seed=Or', repairs: 35 },
+  { id: 'sp4', name: 'مجموعة المناصير', logo: 'https://api.dicebear.com/7.x/initials/svg?seed=MA', repairs: 28 },
+  { id: 'sp5', name: 'الملكية الأردنية', logo: 'https://api.dicebear.com/7.x/initials/svg?seed=RJ', repairs: 22 }
+];
 
-  useEffect(() => {
-    const safetyTimeout = setTimeout(() => loading && setLoading(false), 5000);
-    if (!auth) return setLoading(false);
-    const unsub = onAuthStateChanged(auth, async (u) => { 
-      if (!u) try { await signInAnonymously(auth); } catch(e) {}
-      setUser(u); setLoading(false); clearTimeout(safetyTimeout);
-    });
-    return () => unsub();
-  }, [loading]);
+// --- 2. المكونات الفرعية ---
 
-  useEffect(() => {
-    if (!user || !db) return;
-    const unsubR = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'reports'), (snap) => {
-      setReports(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)));
-    });
-    const unsubD = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'donations'), (snap) => {
-      setDonations(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    return () => { unsubR(); unsubD(); };
-  }, [user]);
+const TareeqnaLogo = () => (
+  <div className="flex flex-col leading-none select-none">
+    <h1 className="text-xl md:text-3xl font-black text-slate-900 tracking-tighter italic whitespace-nowrap leading-none" dir="rtl">
+      طريق<span className="text-green-600">نا</span>
+    </h1>
+    <p className="text-[7px] md:text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1 text-right">Jordan Road Guard</p>
+  </div>
+);
 
-  const sponsors = useMemo(() => [
-    { id: 'sp1', name: 'البنك العربي', logo: 'https://api.dicebear.com/7.x/initials/svg?seed=AB', repairs: 52, color: 'bg-red-600' },
-    { id: 'sp2', name: 'زين الأردن', logo: 'https://api.dicebear.com/7.x/initials/svg?seed=Zain', repairs: 41, color: 'bg-black' },
-    { id: 'sp3', name: 'أورنج الأردن', logo: 'https://api.dicebear.com/7.x/initials/svg?seed=Or', repairs: 35, color: 'bg-orange-500' },
-    { id: 'sp4', name: 'مجموعة المناصير', logo: 'https://api.dicebear.com/7.x/initials/svg?seed=MA', repairs: 28, color: 'bg-green-800' },
-    { id: 'sp5', name: 'الملكية الأردنية', logo: 'https://api.dicebear.com/7.x/initials/svg?seed=RJ', repairs: 22, color: 'bg-slate-900' }
-  ], []);
-
-  if (loading) return <LoadingScreen />;
-
-  return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 rtl text-right" style={{ fontFamily: "'Cairo', sans-serif" }} dir="rtl">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-xl border-b border-slate-100 sticky top-0 z-[60] p-3 md:p-4 flex justify-between items-center shadow-sm">
-        <div className="flex items-center gap-2 md:gap-3 cursor-pointer group shrink-0" onClick={() => setView('landing')}>
-          <div className="bg-green-600 p-2 md:p-2.5 rounded-xl md:rounded-2xl text-white shadow-lg group-hover:rotate-6 transition-all">
-            <TrendingUp size={20} className="md:w-6 md:h-6" strokeWidth={2.5} />
-          </div>
-          <div className="leading-none select-none">
-            {/* تم الإصلاح: نص عادي بدون فلكس لضمان الاتصال */}
-            <h1 className="text-xl md:text-3xl font-black text-slate-900 tracking-tighter italic whitespace-nowrap leading-none mt-1">
-              طريق<span className="text-green-600">نا</span>
-            </h1>
-            <p className="text-[7px] md:text-[8px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Jordan Road Guard</p>
-          </div>
-        </div>
-        <button onClick={() => setView('leaderboard')} className="p-2 md:p-2.5 bg-amber-50 text-amber-600 rounded-xl border border-amber-100 active:scale-95 transition-all"><Trophy size={20}/></button>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 md:px-6">
-        {view === 'landing' && <LandingView setView={setView} reports={reports} sponsors={sponsors} />}
-        {view === 'roads' && <ListView title="بلاغات الشوارع" items={reports} onDonate={(r) => { setSelectedItem({item: r, type: 'road'}); setShowDonateModal(true); }} onInfo={(r) => { setSelectedItem(r); setShowInfoModal(true); }} />}
-        {view === 'stadiums' && <ListView title="مشاريع الملاعب" items={[]} isStadium onDonate={() => {}} onInfo={() => {}} />}
-        {view === 'report' && <ReportView onComplete={() => setView('landing')} user={user} />}
-        {view === 'leaderboard' && <LeaderboardView donations={donations} onBack={() => setView('landing')} />}
-        {view === 'partner-portal' && <PartnerPortalView onBack={() => setView('landing')} />}
-        {view === 'donate' && <DonateUnifiedView reports={reports} onDonate={(item, type) => { setSelectedItem({item, type}); setShowDonateModal(true); }} onInfo={(item) => { setSelectedItem(item); setShowInfoModal(true); }} />}
-      </main>
-
-      <Footer setView={setView} />
-      
-      {/* نشمي AI - مربوط وحقيقي */}
-      <NashmiAI />
-
-      {/* Floating Navigation */}
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[94%] max-w-lg bg-slate-900/95 backdrop-blur-2xl rounded-[2.5rem] md:rounded-[3rem] p-2 md:p-3 flex justify-around items-center z-[70] shadow-2xl border border-white/10">
-        <NavBtn icon={<Home />} label="الرئيسية" active={view === 'landing'} onClick={() => setView('landing')} />
-        <NavBtn icon={<MapPin />} label="الشوارع" active={view === 'roads'} onClick={() => setView('roads')} />
-        <div className="relative">
-          <button onClick={() => setView('report')} className="bg-green-600 text-white p-4 md:p-5 rounded-[1.8rem] md:rounded-[2.2rem] -mt-12 md:-mt-16 shadow-2xl shadow-green-900 border-[4px] md:border-[6px] border-[#F8FAFC] active:scale-90 hover:scale-105 transition-all group">
-            <Plus size={28} strokeWidth={3} className="group-hover:rotate-90 transition-transform" />
-          </button>
-        </div>
-        <NavBtn icon={<Building2 />} label="الملاعب" active={view === 'stadiums'} onClick={() => setView('stadiums')} />
-        <NavBtn icon={<Wallet />} label="تبرع" active={view === 'donate'} onClick={() => setView('donate')} />
-      </nav>
-
-      {showDonateModal && <DonationPopup item={selectedItem} onClose={() => setShowDonateModal(false)} onConfirm={async (d) => {
-        try {
-          await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'donations'), {...d, createdAt: new Date().toISOString()});
-          if (d.type === 'road') {
-            const ref = doc(db, 'artifacts', appId, 'public', 'data', 'reports', d.itemId);
-            const r = reports.find(x => x.id === d.itemId);
-            await updateDoc(ref, { collected: (Number(r.collected)||0) + Number(d.amount) });
-          }
-          setShowDonateModal(false);
-        } catch(e) { console.error("Database error"); }
-      }} />}
-      {showInfoModal && <InfoPopup item={selectedItem} onClose={() => setShowInfoModal(false)} />}
+const NavBtn = ({ icon, label, active, onClick }) => (
+  <button onClick={onClick} className={`flex flex-col items-center gap-1 transition-all active:scale-90 leading-none shrink-0 ${active ? 'text-green-500' : 'text-slate-500 hover:text-white'}`}>
+    <div className={`p-2 md:p-3.5 rounded-xl md:rounded-2xl transition-all shrink-0 ${active ? 'bg-green-500/10 shadow-inner' : ''}`}>
+       {React.cloneElement(icon, { size: 20, className: "md:w-[26px] md:h-[26px]", strokeWidth: active ? 3 : 2.5 })}
     </div>
-  );
-};
+    <span className={`text-[7px] md:text-[10px] font-black uppercase tracking-widest transition-opacity leading-none shrink-0 ${active ? 'opacity-100' : 'opacity-40'}`}>{label}</span>
+  </button>
+);
 
-// --- Nashmi AI Component (Active & Animated) ---
-const NashmiAI = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([
-    { role: 'bot', text: 'يا هلا! أنا نشمي 🇯🇴، مساعدك الذكي لمنصة طريقنا. كيف بقدر أساعدك اليوم؟' }
-  ]);
-  const [input, setInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const [pose, setPose] = useState(NASHMI_POSES.welcome);
-
-  const handleSend = async () => {
-    if (!input.trim()) return;
-    const userMsg = input;
-    setInput('');
-    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
-    setIsTyping(true);
-    setPose(NASHMI_POSES.thinking);
-
-    try {
-      // الاتصال بـ Gemini API
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_KEY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `أنت "نشمي"، مساعد ذكي لمنصة "طريقنا الوطنية" الأردنية.
-              مهمتك: مساعدة المستخدمين في (الإبلاغ عن الحفر، التبرع للطرق والملاعب، الاستفسار عن الشركاء).
-              الأسلوب: لهجة أردنية محترفة، ودودة، ومختصرة.
-              القيود: إذا كان السؤال خارج نطاق المنصة (مثل سياسة، دين، رياضة عامة، نكت)، اعتذر بأدب.
-              سؤال المستخدم: ${userMsg}`
-            }]
-          }]
-        })
-      });
-
-      const data = await response.json();
-      let botReply = "عذراً، صار في خلل بسيط. ممكن تعيد السؤال؟";
-      
-      if (data.candidates && data.candidates[0].content.parts[0].text) {
-          botReply = data.candidates[0].content.parts[0].text;
-          setPose(NASHMI_POSES.explaining);
-      } else {
-          setPose(NASHMI_POSES.confused);
-      }
-
-      setMessages(prev => [...prev, { role: 'bot', text: botReply }]);
-      setTimeout(() => setPose(NASHMI_POSES.welcome), 5000);
-
-    } catch (e) {
-      setMessages(prev => [...prev, { role: 'bot', text: "يبدو أن الاتصال ضعيف. حاول مرة أخرى." }]);
-      setPose(NASHMI_POSES.alert);
-    } finally {
-      setIsTyping(false);
-    }
-  };
-
-  return (
-    <div className="fixed bottom-24 right-4 z-[90] flex flex-col items-end pointer-events-none">
-      {isOpen && (
-        <div className="mb-4 w-80 bg-white rounded-3xl shadow-2xl border-2 border-slate-100 overflow-hidden pointer-events-auto animate-in slide-in-from-bottom-10 fade-in duration-300">
-          <div className="bg-slate-900 p-4 flex items-center justify-between text-white">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white rounded-full overflow-hidden border-2 border-green-500">
-                 <img src={NASHMI_POSES.welcome} alt="Nashmi" className="w-full h-full object-cover" />
-              </div>
-              <div className="leading-none text-right">
-                <p className="font-black text-sm">نشمي AI</p>
-                <p className="text-[10px] text-green-400 font-bold">مساعد طريقنا</p>
-              </div>
-            </div>
-            <button onClick={() => setIsOpen(false)} className="hover:bg-white/20 p-1 rounded-full transition-colors"><X size={18}/></button>
-          </div>
-          <div className="h-72 bg-slate-50 p-4 overflow-y-auto space-y-3">
-            {messages.map((msg, idx) => (
-              <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                {msg.role === 'bot' && <div className="w-6 h-6 rounded-full overflow-hidden mr-2 mt-1 shrink-0"><img src={pose} className="w-full h-full object-cover"/></div>}
-                <div className={`max-w-[85%] p-3 rounded-2xl text-xs font-bold leading-relaxed ${msg.role === 'user' ? 'bg-green-600 text-white rounded-br-none' : 'bg-white text-slate-700 shadow-sm rounded-bl-none border border-slate-100'}`}>
-                  {msg.text}
-                </div>
-              </div>
-            ))}
-            {isTyping && <div className="text-[10px] text-slate-400 font-bold animate-pulse mr-8">نشمي يكتب...</div>}
-          </div>
-          <div className="p-3 bg-white border-t flex gap-2">
-            <input 
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="اكتب سؤالك هنا..."
-              className="flex-1 bg-slate-100 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-green-500 text-right"
-            />
-            <button onClick={handleSend} className="p-3 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all"><Send size={16} className="rotate-180"/></button>
-          </div>
-        </div>
-      )}
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="pointer-events-auto group relative w-20 h-20 transition-transform hover:scale-105 active:scale-95"
-      >
-        {!isOpen && <div className="absolute -top-10 right-0 bg-white px-3 py-1 rounded-xl shadow-lg border border-green-100 animate-bounce mb-2"><p className="text-[10px] font-black text-slate-800">مساعدة؟</p></div>}
-        <div className="absolute inset-0 bg-green-500 rounded-full blur-lg opacity-40 group-hover:opacity-60 animate-pulse"></div>
-        <div className="relative w-full h-full">
-           <img 
-             src={pose} 
-             alt="Open Chat" 
-             className="w-full h-full object-contain drop-shadow-xl" 
-           />
-        </div>
-      </button>
+const LoadingScreen = () => (
+  <div className="h-screen flex flex-col items-center justify-center bg-[#F8FAFC] gap-6 animate-in fade-in text-center px-10 leading-none">
+    <div className="w-16 h-16 md:w-20 md:h-20 border-4 border-green-100 border-t-green-600 rounded-full animate-spin"></div>
+    <div className="space-y-2 leading-none text-center mt-4">
+       <TareeqnaLogo />
+       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">المنصة الوطنية الأردنية</p>
     </div>
-  );
-};
+  </div>
+);
 
-// --- Landing View ---
+const HomeSection = ({ title, items, setView, icon, isSuccess }) => (
+  <div className="space-y-6 px-2 text-right">
+    <div className="flex justify-between items-center border-r-4 border-slate-900 pr-4 leading-none text-right">
+       <div className="flex items-center gap-3 justify-start text-right">
+          <div className="shrink-0 leading-none">{icon}</div>
+          <h3 className="text-lg md:text-2xl font-black text-slate-800 tracking-tight leading-none">{title}</h3>
+       </div>
+       <button onClick={() => setView('roads')} className="text-slate-400 font-bold text-xs hover:text-green-600 transition-colors leading-none">الكل</button>
+    </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 text-right">
+      {items && items.length > 0 ? items.map(item => (
+        <div key={item.id} onClick={() => setView('roads')} className="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all cursor-pointer group relative overflow-hidden flex flex-col h-full text-right leading-none">
+           <div className="relative h-40 md:h-48 overflow-hidden rounded-2xl mb-4 leading-none">
+              <img src={item.img} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="Repair" />
+              {isSuccess && <div className="absolute inset-0 bg-green-600/30 backdrop-blur-[2px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity leading-none"><div className="bg-white text-green-600 p-3 rounded-full shadow-2xl leading-none"><CheckCircle2 size={32}/></div></div>}
+           </div>
+           <div className="space-y-2 flex-1 text-right leading-none">
+              <h4 className="font-black text-slate-800 text-sm md:text-lg truncate leading-none italic mb-2 text-right">{item.location}</h4>
+              <div className="flex items-center gap-1 text-slate-400 font-bold text-[10px] md:text-xs justify-end leading-none">
+                 {item.streetType || "شارع فرعي"} <MapPin size={12} className="text-green-600 leading-none"/>
+              </div>
+           </div>
+           <div className="pt-4 border-t mt-3 leading-none"><div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden leading-none"><div className={`${isSuccess ? 'bg-green-500' : 'bg-amber-500'} h-full rounded-full transition-all leading-none`} style={{width: `${Math.min(((item.collected||0)/(item.goal||100))*100, 100)}%`}}></div></div></div>
+        </div>
+      )) : <p className="col-span-full text-center py-10 text-slate-300 font-bold italic border-2 border-dashed border-slate-50 rounded-[2rem] leading-none text-right">بانتظار تحديث البيانات الميدانية...</p>}
+    </div>
+  </div>
+);
+
 const LandingView = ({ setView, reports, sponsors }) => {
   const categories = useMemo(() => ({
     urgent: reports.filter(r => r.severity >= 8 && (r.collected < (r.goal || 100))).slice(0, 4),
@@ -299,7 +147,7 @@ const LandingView = ({ setView, reports, sponsors }) => {
                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider italic">Corporate Partnerships</p>
               </div>
               <div className="space-y-6">
-                 {sponsors.map(s => (
+                 {sponsors && sponsors.map(s => (
                    <div key={s.id} className="flex items-center gap-4 group cursor-pointer text-right transition-transform hover:-translate-x-1 justify-start">
                       <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-slate-50 flex items-center justify-center p-2 border border-slate-50 transition-all shrink-0"><img src={s.logo} className="w-full h-full object-contain grayscale group-hover:grayscale-0 transition-all" alt={s.name} /></div>
                       <div className="flex-1 min-w-0">
@@ -339,37 +187,159 @@ const LandingView = ({ setView, reports, sponsors }) => {
   );
 };
 
-const HomeSection = ({ title, items, setView, icon, isSuccess }) => (
-  <div className="space-y-6 px-2 text-right">
-    <div className="flex justify-between items-center border-r-4 border-slate-900 pr-4 leading-none text-right">
-       <div className="flex items-center gap-3 justify-start text-right">
-          <div className="shrink-0 leading-none">{icon}</div>
-          <h3 className="text-lg md:text-2xl font-black text-slate-800 tracking-tight leading-none">{title}</h3>
-       </div>
-       <button onClick={() => setView('roads')} className="text-slate-400 font-bold text-xs hover:text-green-600 transition-colors leading-none">الكل</button>
-    </div>
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 text-right">
-      {items.length > 0 ? items.map(item => (
-        <div key={item.id} onClick={() => setView('roads')} className="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all cursor-pointer group relative overflow-hidden flex flex-col h-full text-right leading-none">
-           <div className="relative h-40 md:h-48 overflow-hidden rounded-2xl mb-4 leading-none">
-              <img src={item.img} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="Repair" />
-              {isSuccess && <div className="absolute inset-0 bg-green-600/30 backdrop-blur-[2px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity leading-none"><div className="bg-white text-green-600 p-3 rounded-full shadow-2xl leading-none"><CheckCircle2 size={32}/></div></div>}
-           </div>
-           <div className="space-y-2 flex-1 text-right leading-none">
-              <h4 className="font-black text-slate-800 text-sm md:text-lg truncate leading-none italic mb-2 text-right">{item.location}</h4>
-              <div className="flex items-center gap-1 text-slate-400 font-bold text-[10px] md:text-xs justify-end leading-none">
-                 {item.streetType || "شارع فرعي"} <MapPin size={12} className="text-green-600 leading-none"/>
-              </div>
-           </div>
-           <div className="pt-4 border-t mt-3 leading-none"><div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden leading-none"><div className={`${isSuccess ? 'bg-green-500' : 'bg-amber-500'} h-full rounded-full transition-all leading-none`} style={{width: `${Math.min(((item.collected||0)/(item.goal||100))*100, 100)}%`}}></div></div></div>
+const DetailView = ({ item, onBack, onDonate }) => {
+  if (!item) return null;
+  return (
+    <div className="animate-in slide-in-from-left duration-500 pb-20 text-right">
+      <div className="flex items-center justify-between mb-6">
+        <button onClick={onBack} className="p-3 bg-white rounded-xl shadow-sm border"><ChevronLeft className="rotate-180"/></button>
+        <h2 className="text-2xl font-black text-slate-800">تفاصيل الحالة</h2>
+      </div>
+      <div className="bg-white rounded-[2.5rem] overflow-hidden shadow-xl border border-slate-100">
+        <div className="relative h-72">
+          <img src={item.img} className="w-full h-full object-cover" alt="Detail" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent"></div>
+          <div className="absolute bottom-6 right-6 text-white text-right">
+            <span className="bg-red-600 px-3 py-1 rounded-full text-xs font-bold mb-2 inline-block">خطورة {item.severity}/10</span>
+            <h3 className="text-xl font-black leading-tight">{item.location}</h3>
+          </div>
         </div>
-      )) : <p className="col-span-full text-center py-10 text-slate-300 font-bold italic border-2 border-dashed border-slate-50 rounded-[2rem] leading-none text-right">بانتظار تحديث البيانات الميدانية...</p>}
+        <div className="p-8 space-y-8 text-right">
+          <div className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
+             <div className="text-center"><p className="text-xs text-slate-400 font-bold">النوع</p><p className="font-black text-slate-800">{item.streetType}</p></div>
+             <div className="w-px h-8 bg-slate-200"></div>
+             <div className="text-center"><p className="text-xs text-slate-400 font-bold">الأثر</p><p className="font-black text-green-600">{item.impact || 'عالٍ'}</p></div>
+             <div className="w-px h-8 bg-slate-200"></div>
+             <div className="text-center"><p className="text-xs text-slate-400 font-bold">الهدف</p><p className="font-black text-amber-600">{item.goal} د.أ</p></div>
+          </div>
+          <div className="space-y-3">
+            <h4 className="font-black text-lg flex items-center gap-2 justify-start"><Info size={18} className="text-indigo-500"/> التقرير الفني</h4>
+            <p className="text-slate-600 leading-relaxed text-sm font-medium border-r-4 border-indigo-200 pr-4">{item.description || 'تم رصد الضرر وتوثيقه، ويحتاج لتدخل فوري.'}</p>
+          </div>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm font-bold"><span>تم جمع: {item.collected} د.أ</span><span className="text-slate-400">{Math.round((item.collected/item.goal)*100)}%</span></div>
+            <div className="h-4 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-green-500 transition-all duration-1000" style={{width: `${(item.collected/item.goal)*100}%`}}></div></div>
+          </div>
+          <button onClick={onDonate} className="w-full bg-green-600 text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-green-200 active:scale-95 transition-all flex items-center justify-center gap-3"><Heart fill="currentColor" /> تبرع لهذا المشروع</button>
+        </div>
+      </div>
     </div>
+  );
+};
+
+const PaymentSimulation = ({ item, onBack, onSuccess }) => {
+  const [processing, setProcessing] = useState(false);
+  const handlePay = () => {
+    setProcessing(true);
+    setTimeout(() => {
+      setProcessing(false);
+      alert("تمت عملية التبرع بنجاح! شكراً لمساهمتك الوطنية.");
+      onSuccess();
+    }, 2000);
+  };
+  return (
+    <div className="animate-in zoom-in duration-300 text-right pb-20">
+      <div className="flex items-center gap-4 mb-6"><button onClick={onBack} className="p-3 bg-white rounded-xl shadow-sm border"><ChevronLeft className="rotate-180"/></button><h2 className="text-2xl font-black text-slate-800">بوابة الدفع الآمن</h2></div>
+      <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100 space-y-6">
+         <div className="flex justify-between items-center border-b border-slate-100 pb-4"><span className="text-slate-500 font-bold">المشروع:</span><span className="font-black text-slate-800 text-sm">{item?.location}</span></div>
+         <div className="space-y-4"><label className="block text-sm font-bold text-slate-400">قيمة التبرع (د.أ)</label><div className="grid grid-cols-3 gap-3">{[5, 10, 20].map(amt => (<button key={amt} className="py-3 rounded-xl border-2 border-slate-100 font-black hover:border-green-500 hover:bg-green-50 transition-all">{amt}</button>))}</div><input type="number" placeholder="مبلغ آخر" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-center" /></div>
+         <div className="space-y-4"><label className="block text-sm font-bold text-slate-400">بيانات البطاقة</label><div className="relative"><CreditCard className="absolute top-4 right-4 text-slate-400" size={20}/><input placeholder="0000 0000 0000 0000" className="w-full p-4 pr-12 bg-slate-50 rounded-2xl outline-none font-mono font-bold text-left ltr" dir="ltr" /></div></div>
+         <button onClick={handlePay} disabled={processing} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-lg shadow-xl flex items-center justify-center gap-2">{processing ? <Loader2 className="animate-spin"/> : <Lock size={18}/>} {processing ? 'جاري المعالجة...' : 'دفع آمن الآن'}</button>
+      </div>
+    </div>
+  );
+};
+
+const OdooDashboard = ({ onLogout }) => (
+  <div className="bg-[#f0f4f7] min-h-screen -mx-4 -mt-6 p-4 font-sans text-right" dir="rtl">
+    <div className="bg-[#714B67] text-white p-4 flex justify-between items-center rounded-b-xl shadow-md mb-6"><div className="flex items-center gap-3"><div className="p-2 bg-white/20 rounded-lg"><Building2 size={20}/></div><div><h2 className="font-bold text-sm">Odoo Enterprise</h2><p className="text-[10px] opacity-80">Tareeqna Module</p></div></div><button onClick={onLogout} className="text-xs bg-white/10 px-3 py-1 rounded hover:bg-white/20">خروج</button></div>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">{[{ label: 'البلاغات', val: '1,240', icon: <FileText className="text-purple-600"/> }, { label: 'قيد التنفيذ', val: '45', icon: <Activity className="text-blue-600"/> }, { label: 'التبرعات', val: '85K د.أ', icon: <Wallet className="text-green-600"/> }, { label: 'الإنجاز', val: '92%', icon: <PieChart className="text-amber-600"/> }].map((stat, i) => (<div key={i} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200"><div className="flex justify-between items-start mb-2">{stat.icon}<span className="text-xs text-slate-400 font-bold">2024</span></div><h3 className="text-2xl font-black text-slate-800">{stat.val}</h3><p className="text-[10px] text-slate-500">{stat.label}</p></div>))}</div>
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"><div className="p-4 border-b border-slate-100 flex justify-between items-center"><h3 className="font-bold text-slate-800 text-sm">أحدث مشاريع الصيانة</h3></div><table className="w-full text-xs"><thead className="bg-slate-50 text-slate-500"><tr><th className="p-3 text-right">المرجع</th><th className="p-3 text-right">الموقع</th><th className="p-3 text-right">الحالة</th></tr></thead><tbody className="divide-y divide-slate-100">{[{ id: '#TR-001', loc: 'شارع الجاردنز', st: 'مكتمل' }, { id: '#TR-002', loc: 'طريق المطار', st: 'جاري العمل' }].map((row, i) => (<tr key={i}><td className="p-3 font-mono font-bold text-slate-600">{row.id}</td><td className="p-3 font-bold text-slate-800">{row.loc}</td><td className="p-3">{row.st}</td></tr>))}</tbody></table></div>
   </div>
 );
 
-// --- Report View (Fixed: Original Upload Method + Compression) ---
-const ReportView = ({ onComplete, user }) => {
+const JoinTeamForm = ({ team, onBack, onSuccess }) => {
+  const [formData, setFormData] = useState({ name: '', dob: '', phone: '', motivation: '' });
+  const handleSubmit = () => {
+     const birthDate = new Date(formData.dob);
+     const age = new Date().getFullYear() - birthDate.getFullYear();
+     if (age < 18) return alert("عذراً، يجب أن يكون عمرك 18 عاماً فما فوق.");
+     if (!formData.name || !formData.phone) return alert("يرجى تعبئة الحقول.");
+     alert("تم إرسال طلبك لقائد الفريق!");
+     onSuccess();
+  };
+  return (
+    <div className="py-6 animate-in slide-in-from-bottom-10 text-right pb-20">
+       <button onClick={onBack} className="flex items-center gap-2 text-slate-500 font-bold mb-6"><ChevronLeft className="rotate-180"/> عودة للفرق</button>
+       <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100">
+          <div className="flex items-center gap-4 mb-6 border-b border-slate-100 pb-4"><div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-600"><HandHeart size={32}/></div><div><h2 className="text-xl font-black text-slate-800">استمارة التطوع</h2><p className="text-xs text-slate-500">فريق: <span className="text-green-600 font-bold">{team?.teamName}</span></p></div></div>
+          <div className="space-y-4">
+             <div><label className="text-xs font-bold text-slate-500">الاسم</label><input className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-right" value={formData.name} onChange={e=>setFormData({...formData, name: e.target.value})} /></div>
+             <div><label className="text-xs font-bold text-slate-500">تاريخ الميلاد</label><input type="date" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-right" value={formData.dob} onChange={e=>setFormData({...formData, dob: e.target.value})} /></div>
+             <div><label className="text-xs font-bold text-slate-500">رقم الهاتف</label><input type="tel" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-right" value={formData.phone} onChange={e=>setFormData({...formData, phone: e.target.value})} /></div>
+          </div>
+          <button onClick={handleSubmit} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-lg mt-6 shadow-xl hover:bg-green-600 transition-all">إرسال طلب الانضمام</button>
+       </div>
+    </div>
+  );
+};
+
+const VolunteeringHub = ({ teams, user, onBack, setView, setActiveData, initialMode }) => {
+  const [viewState, setViewState] = useState(initialMode || 'hub');
+  const [teamForm, setTeamForm] = useState({ name: '', task: '', location: '', count: '', phone: '' });
+
+  const handleCreate = async () => {
+    if (!teamForm.name) return alert("يرجى تعبئة الحقول");
+    try {
+        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'teams'), {
+            teamName: teamForm.name, task: teamForm.task, location: teamForm.location, 
+            membersCount: teamForm.count, leaderId: 'guest', createdAt: new Date().toISOString(), members: 1
+        });
+        setViewState('success');
+    } catch(e) { alert("تم إنشاء الفريق (محاكاة)"); setViewState('success'); }
+  };
+
+  if (viewState === 'success') return (
+       <div className="bg-white p-10 rounded-[3rem] text-center space-y-6 shadow-xl border border-green-100 animate-in zoom-in mt-10">
+           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto text-green-600"><CheckCircle2 size={40}/></div>
+           <h3 className="text-2xl font-black text-slate-800">تم إنشاء الفريق بنجاح!</h3>
+           <button onClick={() => setViewState('hub')} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black mt-4">العودة للقائمة</button>
+       </div>
+  );
+
+  if (viewState === 'create') return (
+        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4 animate-in slide-in-from-bottom-10 mt-10 text-right pb-10">
+            <div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-slate-800">تأسيس فريق</h3><button onClick={() => setViewState('hub')}><X/></button></div>
+            <div className="space-y-4">
+                <div><label className="text-xs font-bold text-slate-500">اسم الفريق</label><input className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-green-500 text-right" value={teamForm.name} onChange={e => setTeamForm({...teamForm, name: e.target.value})}/></div>
+                <div><label className="text-xs font-bold text-slate-500">نوع النشاط</label><select className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none text-right" onChange={e => setTeamForm({...teamForm, task: e.target.value})}><option value="">اختر المهمة...</option>{VOLUNTEER_TASKS.map((t,i) => <option key={i} value={t.label}>{t.label} ({t.points} نقاط)</option>)}</select></div>
+                <div><label className="text-xs font-bold text-slate-500">الموقع</label><input className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none text-right" value={teamForm.location} onChange={e => setTeamForm({...teamForm, location: e.target.value})} /></div>
+            </div>
+            <button onClick={handleCreate} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black mt-4 shadow-xl">إنشاء الفريق</button>
+        </div>
+  );
+
+  return (
+    <div className="py-8 space-y-6 animate-in fade-in duration-700 text-right pb-20">
+       <div className="flex items-center justify-between"><div><h2 className="text-3xl font-black text-slate-800 tracking-tighter">بوابة التطوع</h2><p className="text-slate-400 font-bold text-xs mt-1">مجتمعنا.. مسؤوليتنا</p></div><button onClick={onBack} className="p-3 bg-white rounded-xl shadow-sm border"><ChevronLeft className="rotate-180"/></button></div>
+       
+       <div className="space-y-8">
+           <div onClick={() => setViewState('create')} className="bg-white border-2 border-dashed border-green-300 rounded-[2rem] p-6 flex items-center justify-center gap-4 cursor-pointer hover:bg-green-50 transition-all group"><div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600 group-hover:scale-110 transition-transform"><Plus size={24}/></div><div className="text-center"><h4 className="font-black text-slate-800">أسس فريقك الخاص</h4><p className="text-xs text-slate-500">كن قائداً واجمع النقاط</p></div></div>
+           <div className="grid gap-4 md:grid-cols-2">
+               {teams && teams.map(t => (
+                   <div key={t.id} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-md transition-all text-right">
+                       <div className="flex justify-between items-start mb-4"><div><h4 className="font-black text-lg text-slate-800">{t.teamName}</h4><span className="bg-amber-100 text-amber-800 text-[10px] px-2 py-1 rounded-lg font-bold">{t.task}</span></div><div className="text-center bg-slate-50 p-2 rounded-xl"><span className="block text-xl font-black text-green-600">{t.members}/{t.membersCount}</span><span className="text-[9px] text-slate-400 font-bold">عضو</span></div></div>
+                       <p className="text-xs text-slate-400 flex items-center gap-1 mb-4"><MapPin size={12}/> {t.location}</p>
+                       <button onClick={() => { setActiveData(t); setView('join-team'); }} className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold text-sm hover:bg-green-600 transition-all flex items-center justify-center gap-2"><UserPlus size={16}/> انضم للفريق</button>
+                   </div>
+               ))}
+           </div>
+       </div>
+    </div>
+  );
+};
+
+const CameraReportView = ({ onComplete, user }) => {
   const [img, setImg] = useState(null);
   const [location, setLocation] = useState('');
   const [error, setError] = useState(null);
@@ -386,350 +356,177 @@ const ReportView = ({ onComplete, user }) => {
     setIsPC(checkDevice());
   }, []);
 
-  const compressImage = (base64) => {
-    return new Promise((resolve) => {
-      const img = new Image(); img.src = base64;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1000; let width = img.width; let height = img.height;
-        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-        canvas.width = width; canvas.height = height;
-        const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.6));
-      };
-    });
-  };
-
-  const handleSubmission = async () => {
-    if (isPC) return; 
-    if (!location.trim()) return setError("يرجى كتابة عنوان الشارع بدقة.");
-    if (!img) return setError("يجب إرفاق صورة للضرر.");
-    
-    setSubmitting(true); setError(null);
-
-    const timer = setTimeout(() => {
-        if (submitting) { setSubmitting(false); setError("بطء في الاتصال."); }
-    }, 20000);
-
-    try {
-      const compressedImg = await compressImage(img);
-      const streetType = location.includes("مطار") ? "طريق سيادي" : "شارع حيوي";
-
-      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'reports'), {
-        userId: user?.uid || "guest",
-        img: compressedImg,
-        location,
-        streetType,
-        severity: 7, 
-        goal: 250, 
-        collected: 0,
-        createdAt: new Date().toISOString(),
-        status: 'verified_original'
-      });
-      
-      clearTimeout(timer);
-      onComplete();
-    } catch (e) {
-      clearTimeout(timer);
-      setError("حدث خطأ أثناء الإرسال. تأكد من الإنترنت.");
-      setSubmitting(false);
-    }
+  const handleSubmission = () => {
+    if (isPC) return;
+    if (!location || !img) return setError("يرجى تعبئة كافة الحقول");
+    setSubmitting(true);
+    setTimeout(() => { setSubmitting(false); onComplete(); alert("تم استلام البلاغ بنجاح!"); }, 2000);
   };
 
   return (
-    <div className="p-4 md:p-10 space-y-8 animate-in slide-in-from-bottom-12 max-w-4xl mx-auto text-right leading-none">
-      <div className="flex items-center justify-between"><h2 className="text-3xl font-black text-slate-800 tracking-tighter leading-none text-right">تبليغ جديد</h2><button onClick={onComplete} className="p-2 md:p-3 bg-white rounded-full text-slate-400 border border-slate-100 shadow-sm leading-none"><X/></button></div>
-      
+    <div className="p-8 text-right space-y-6 pt-20 animate-in slide-in-from-bottom-10">
+      <div className="flex justify-between items-center"><h2 className="text-3xl font-black text-slate-800">تبليغ جديد</h2><button onClick={onComplete}><X/></button></div>
       {isPC ? (
-        <div className="bg-slate-900 p-10 rounded-[3rem] text-center space-y-6 shadow-2xl relative overflow-hidden">
-           <div className="relative z-10 flex flex-col items-center">
-              <Smartphone className="text-green-500 w-20 h-20 mb-4 animate-pulse" />
-              <h3 className="text-3xl font-black text-white">عذراً، يمنع الرفع من الحاسوب</h3>
-              <p className="text-slate-400 text-lg leading-relaxed max-w-md">لضمان مصداقية البلاغات، يجب استخدام كاميرا الهاتف المباشرة من موقع الحدث.</p>
-              <div className="mt-8 bg-white p-4 rounded-2xl">
-                 <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://tareeqna.vercel.app/" className="w-32 h-32" alt="Scan QR" />
-              </div>
-              <p className="text-xs text-slate-500 mt-2 font-bold uppercase tracking-widest">امسح الكود للإكمال من هاتفك</p>
-           </div>
+        <div className="bg-slate-900 p-8 rounded-[2rem] text-center text-white space-y-4">
+           <Smartphone size={48} className="mx-auto text-green-500 animate-pulse"/>
+           <h3 className="text-xl font-bold">خاص بالهواتف فقط</h3>
+           <p className="text-sm opacity-80">لضمان المصداقية، يرجى استخدام تطبيق الهاتف.</p>
+           <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://tareeqna.vercel.app/" className="w-32 h-32 mx-auto rounded-xl border-4 border-white" alt="QR" />
         </div>
       ) : (
         <>
-          <div className="bg-white p-8 md:p-10 rounded-[3rem] border-4 border-dashed border-slate-200 flex flex-col items-center justify-center min-h-[350px] relative overflow-hidden cursor-pointer group hover:border-green-500 shadow-inner text-center transition-all leading-none" onClick={() => fileInputRef.current.click()}>
-            {img ? <img src={img} className="absolute inset-0 w-full h-full object-cover leading-none" alt="Selected" /> : 
-              <div className="text-center space-y-6 animate-in zoom-in leading-none">
-                 <div className="p-8 bg-slate-50 text-slate-300 rounded-[2.5rem] group-hover:bg-green-50 group-hover:text-green-500 transition-all mx-auto w-fit shadow-inner leading-none"><Camera size={60} className="leading-none"/></div>
-                 <div className="leading-none"><p className="text-2xl font-black text-slate-700 leading-none italic uppercase text-center leading-none">إرفاق صورة</p><p className="text-sm font-bold text-slate-400 mt-4 max-w-xs mx-auto italic leading-none text-center leading-none">اضغط هنا لفتح الكاميرا أو الاستوديو.</p></div>
-              </div>
-            }
-            <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={(e) => {
-              const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = () => setImg(r.result); r.readAsDataURL(f); }
-            }} />
+          <div onClick={() => fileInputRef.current.click()} className="bg-slate-100 h-64 rounded-[2rem] border-4 border-dashed border-slate-300 flex flex-col items-center justify-center cursor-pointer overflow-hidden">
+             {img ? <img src={img} className="w-full h-full object-cover rounded-[2rem]" alt="preview" /> : <><Camera size={48} className="text-slate-400 mb-2"/><p className="font-bold text-slate-500">اضغط للتصوير</p></>}
+             <input ref={fileInputRef} type="file" accept="image/*" capture="environment" hidden onChange={e => { const f=e.target.files[0]; if(f){ const r=new FileReader(); r.onload=()=>setImg(r.result); r.readAsDataURL(f); } }} />
           </div>
-
-          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6 relative text-right leading-none">
-             <div className="space-y-4 leading-none text-right">
-                <label className={`text-xs font-black uppercase tracking-widest flex items-center gap-2 leading-none justify-end text-right ${error ? 'text-red-600 animate-pulse' : 'text-slate-400'}`}>
-                   العنوان <ShieldCheck size={14} className={error ? 'text-red-600' : 'text-indigo-600'}/>
-                </label>
-                <div className="relative text-right">
-                  <MapPin className={`absolute right-6 top-1/2 -translate-y-1/2 transition-colors leading-none ${error ? 'text-red-600' : 'text-green-600'}`} size={24}/>
-                  <input 
-                    placeholder="اسم الشارع أو المنطقة..." 
-                    className={`w-full p-6 md:p-8 pr-14 md:pr-16 bg-slate-50 border-4 rounded-[2rem] font-black outline-none transition-all text-xl md:text-2xl shadow-inner text-right leading-none ${error ? 'border-red-500 bg-red-50' : 'border-transparent focus:border-green-600 focus:bg-white'}`} 
-                    value={location} 
-                    onChange={e => { setLocation(e.target.value); if(e.target.value.trim()) setError(null); }}
-                  />
-                </div>
-                {error && (
-                  <div className="flex items-start gap-3 bg-red-100 text-red-600 p-5 rounded-[1.8rem] border-2 border-red-200 animate-in slide-in-from-top-4 text-right leading-none text-right">
-                    <AlertCircle size={24} className="shrink-0 mt-1 leading-none text-right" />
-                    <p className="font-black text-sm md:text-lg leading-snug text-right leading-none text-right">{error}</p>
-                  </div>
-                )}
-             </div>
-          </div>
-
-          <button onClick={handleSubmission} disabled={submitting} className="w-full bg-slate-900 text-white py-6 md:py-8 rounded-[2rem] font-black text-2xl md:text-4xl shadow-2xl active:scale-95 disabled:bg-slate-400 transition-all flex items-center justify-center gap-4 group leading-none text-center">
-            {submitting ? <Loader2 className="animate-spin" size={32}/> : <>نشر البلاغ <Send size={28} className="rotate-180 group-hover:rotate-0 transition-transform leading-none"/></>}
-          </button>
+          <input className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-right outline-none" placeholder="موقع البلاغ" value={location} onChange={e=>setLocation(e.target.value)} />
+          {error && <p className="text-red-500 font-bold text-sm">{error}</p>}
+          <button onClick={handleSubmission} disabled={submitting} className="w-full bg-green-600 text-white py-4 rounded-2xl font-bold shadow-xl">{submitting ? 'جاري الرفع...' : 'إرسال البلاغ'}</button>
         </>
       )}
     </div>
   );
 };
 
-const ListView = ({ title, items, isStadium }) => (
-  <div className="py-8 md:py-12 space-y-10 animate-in slide-in-from-right duration-700 text-right leading-none">
-     <div className="px-2 border-r-8 border-slate-900 pr-4 md:pr-6 text-right leading-none">
-        <h2 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tighter uppercase italic text-right leading-none">{title}</h2>
-        <p className="text-slate-400 font-bold text-[10px] md:text-xs uppercase tracking-widest mt-2 text-right leading-none">Verified Infrastructure Database</p>
-     </div>
-     <div className="grid gap-8 leading-none text-right">
-        {items.length > 0 ? items.map(item => (
-           <DetailedCard key={item.id} item={item} />
-        )) : (
-          <div className="py-20 md:py-32 text-center space-y-8 bg-white rounded-[3rem] md:rounded-[5rem] border-2 border-dashed border-slate-100 shadow-inner flex flex-col items-center leading-none text-right">
-             <div className="p-8 bg-slate-50 rounded-full text-slate-200 animate-pulse leading-none text-right"><Building2 size={100} className="leading-none text-right"/></div>
-             <div className="space-y-4 text-center leading-none text-right"><p className="text-2xl md:text-3xl font-black text-slate-300 tracking-tighter uppercase leading-none italic text-center leading-none text-right">{isStadium ? 'لا توجد تطويرات للملاعب حالياً' : 'لا يوجد مشاريع نشطة'}</p><p className="text-slate-400 font-bold text-xs md:text-sm max-w-sm mx-auto leading-relaxed italic text-center leading-none text-right">سيتم تحديث القائمة فور توفر تقارير ميدانية معتمدة من اللجنة الفنية للمنصة.</p></div>
-          </div>
-        )}
-     </div>
-  </div>
-);
-
-const DetailedCard = ({ item }) => (
-  <div className="bg-white p-6 md:p-12 rounded-[2.5rem] md:rounded-[4.5rem] border border-slate-100 shadow-sm space-y-8 group hover:shadow-2xl transition-all duration-700 text-right leading-none text-right text-right text-right">
-     <div className="flex flex-col lg:flex-row gap-8 md:gap-12 leading-none text-right text-right text-right text-right">
-        <div className="relative w-full lg:w-80 h-64 md:h-80 flex-shrink-0 overflow-hidden rounded-[2.5rem] md:rounded-[3.5rem] shadow-inner leading-none text-right text-right text-right text-right">
-           <img src={item.img} className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-1000 leading-none text-right text-right text-right" alt="Hole" />
-           <div className={`absolute top-4 right-4 text-white text-[9px] md:text-[10px] font-black px-4 py-1.5 rounded-full shadow-xl ring-2 md:ring-4 ring-white uppercase animate-pulse leading-none text-right text-right ${item.severity >= 8 ? 'bg-red-600' : 'bg-green-600'}`}> {item.severity >= 8 ? 'خطر جداً' : 'أولوية'} </div>
-        </div>
-        <div className="flex-1 space-y-6 md:space-y-8 text-right flex flex-col justify-center leading-none text-right text-right text-right text-right text-right">
-           <div className="flex justify-between items-start leading-none w-full text-right text-right text-right text-right text-right text-right text-right"><h4 className="font-black text-3xl md:text-5xl text-slate-800 tracking-tighter italic text-right shrink-0 leading-none text-right text-right text-right">إصلاح وتعبيد</h4><button className="p-3 md:p-4 bg-indigo-50 text-indigo-600 rounded-xl leading-none text-right text-right text-right text-right text-right text-right text-right"><Info size={24} className="leading-none text-right text-right text-right text-right"/></button></div>
-           <p className="text-slate-400 font-bold text-xl md:text-2xl flex items-center gap-3 justify-end leading-none text-right italic leading-none text-right text-right text-right text-right text-right"><MapPin size={24} className="text-green-600 leading-none text-right text-right text-right"/> {item.location}</p>
-           <div className="flex flex-wrap gap-2 justify-end leading-none text-right text-right text-right text-right text-right text-right"><span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-[10px] font-black italic text-right leading-none text-right text-right text-right text-right">{item.streetType || "شارع"}</span></div>
-           <div className="pt-6 space-y-4 text-right leading-none text-right text-right text-right text-right text-right">
-              <div className="flex justify-between text-[10px] md:text-sm font-black uppercase tracking-widest text-slate-500 leading-none text-right text-right text-right text-right text-right text-right text-right"><span className="text-right text-right text-right text-right text-right">المساهمات: <span className="text-slate-900 text-xl md:text-2xl leading-none text-right text-right text-right text-right text-right">{item.collected || 0} د.أ</span></span><span className="text-right text-right text-right text-right text-right">الهدف الوطني: {item.goal || 150} د.أ</span></div>
-              <div className="w-full bg-slate-100 h-4 rounded-full overflow-hidden shadow-inner p-1 leading-none text-right text-right text-right text-right text-right text-right text-right text-right text-right"><div className="bg-gradient-to-l from-green-500 to-green-700 h-full rounded-full transition-all duration-1000 leading-none text-right text-right text-right text-right text-right" style={{width: `${Math.min(((item.collected||0)/(item.goal||100))*100, 100)}%`}}></div></div>
-           </div>
-        </div>
-     </div>
-     <button className="w-full bg-amber-500 text-white py-6 md:py-8 rounded-[1.8rem] md:rounded-[2.5rem] font-black text-2xl md:text-4xl shadow-xl hover:bg-amber-600 active:scale-[0.98] transition-all flex items-center justify-center gap-4 group leading-none uppercase italic text-center text-right leading-none">
-       <Heart fill="currentColor" size={28} className="group-hover:scale-125 transition-transform leading-none" /> ساهم في الإعمار
-     </button>
-  </div>
-);
-
-const NavBtn = ({ icon, label, active, onClick }) => (
-  <button onClick={onClick} className={`flex flex-col items-center gap-1 transition-all active:scale-90 leading-none shrink-0 ${active ? 'text-green-500' : 'text-slate-500'}`}>
-    <div className={`p-2 md:p-3.5 rounded-xl md:rounded-2xl transition-all shrink-0 ${active ? 'bg-green-500/10 shadow-inner' : ''} text-right text-right text-right`}>
-       {React.cloneElement(icon, { size: 20, className: "md:w-[26px] md:h-[26px] text-right text-right", strokeWidth: active ? 3 : 2.5 })}
+const DonateUnifiedView = ({ reports, onDonate }) => (
+    <div className="py-8 space-y-6 animate-in fade-in text-right pb-20">
+       <h2 className="text-3xl font-black text-slate-800 pr-4 border-r-4 border-green-600">صندوق الإعمار</h2>
+       <div className="grid gap-4 md:grid-cols-2">
+          {reports && reports.length > 0 ? reports.map(r => (
+              <div key={r.id} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+                  <img src={r.img} className="w-full h-40 object-cover rounded-2xl mb-4" alt="repair"/>
+                  <h4 className="font-bold text-lg mb-2">{r.location}</h4>
+                  <div className="flex justify-between text-xs font-bold text-slate-500 mb-4"><span>تم جمع: {r.collected}</span><span>الهدف: {r.goal}</span></div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full mb-4"><div className="h-full bg-green-500 rounded-full" style={{width: `${Math.min((r.collected/r.goal)*100, 100)}%`}}></div></div>
+                  <button onClick={() => onDonate(r, 'road')} className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold">تبرع الآن</button>
+              </div>
+          )) : <p className="text-center text-slate-400 py-10">لا توجد مشاريع بحاجة للتبرع حالياً.</p>}
+       </div>
     </div>
-    <span className={`text-[7px] md:text-[10px] font-black uppercase tracking-widest transition-opacity leading-none shrink-0 ${active ? 'opacity-100' : 'opacity-40'} text-right text-right text-right`}>{label}</span>
-  </button>
+);
+
+const NashmiAI = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState([
+    { role: 'bot', text: 'يا هلا! أنا نشمي 🇯🇴، مساعدك الذكي. كيف بقدر أساعدك؟' }
+  ]);
+  const [input, setInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [pose, setPose] = useState(NASHMI_POSES.welcome);
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+    const userMsg = input;
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    setIsTyping(true);
+    setPose(NASHMI_POSES.thinking);
+
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `أنت "نشمي"، مساعد ذكي لمنصة "طريقنا الوطنية". رد باختصار ولهجة أردنية. السؤال: ${userMsg}` }] }]
+        })
+      });
+      const data = await response.json();
+      const botReply = data.candidates?.[0]?.content?.parts?.[0]?.text || "عذراً، صار في خلل.";
+      setMessages(prev => [...prev, { role: 'bot', text: botReply }]);
+      setPose(NASHMI_POSES.explaining);
+      setTimeout(() => setPose(NASHMI_POSES.welcome), 5000);
+    } catch (e) {
+      setMessages(prev => [...prev, { role: 'bot', text: "نت ضعيف." }]);
+      setPose(NASHMI_POSES.alert);
+    } finally { setIsTyping(false); }
+  };
+
+  return (
+    <div className="fixed bottom-24 right-4 z-[90] flex flex-col items-end pointer-events-none">
+      {isOpen && (
+        <div className="mb-4 w-80 bg-white rounded-3xl shadow-2xl border-2 border-slate-100 overflow-hidden pointer-events-auto animate-in slide-in-from-bottom-10">
+          <div className="bg-slate-900 p-4 flex justify-between items-center text-white"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-white rounded-full overflow-hidden border-2 border-green-500"><img src={NASHMI_POSES.welcome} className="w-full h-full object-cover"/></div><div><p className="font-black text-sm">نشمي AI</p><p className="text-[10px] text-green-400">مساعد طريقنا</p></div></div><button onClick={() => setIsOpen(false)}><X size={18}/></button></div>
+          <div className="h-64 bg-slate-50 p-4 overflow-y-auto space-y-3">{messages.map((msg, i) => (<div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[85%] p-3 rounded-2xl text-xs font-bold ${msg.role === 'user' ? 'bg-green-600 text-white rounded-br-none' : 'bg-white text-slate-700 shadow-sm rounded-bl-none'}`}>{msg.text}</div></div>))}</div>
+          <div className="p-3 bg-white border-t flex gap-2"><input value={input} onChange={e => setInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleSend()} placeholder="اكتب..." className="flex-1 bg-slate-100 rounded-xl px-4 py-2 text-xs font-bold outline-none text-right" /><button onClick={handleSend}><Send size={16} className="rotate-180 text-slate-900"/></button></div>
+        </div>
+      )}
+      <button onClick={() => setIsOpen(!isOpen)} className="pointer-events-auto group relative w-20 h-20 transition-transform hover:scale-105 active:scale-95"><div className="absolute inset-0 bg-green-500 rounded-full blur-lg opacity-40 animate-pulse"></div><div className="relative w-full h-full"><img src={pose} className="w-full h-full object-contain drop-shadow-xl" /></div></button>
+    </div>
+  );
+};
+
+const DetailedCard = ({ item, onDonate, onInfo }) => (
+  <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-lg transition-all text-right group">
+     <div className="relative h-48 rounded-[2rem] overflow-hidden mb-4"><img src={item.img} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="Card img"/><div className="absolute top-4 right-4 bg-white/90 px-3 py-1 rounded-full text-[10px] font-black">{item.streetType}</div></div>
+     <h4 className="font-black text-lg text-slate-800 truncate mb-1">{item.location}</h4>
+     <div className="flex justify-between items-center mt-2"><div className="flex items-center gap-1 text-xs text-slate-400"><MapPin size={14}/> {item.city || 'الأردن'}</div><button onClick={() => { if(onInfo) onInfo(item); }} className="bg-indigo-50 text-indigo-600 px-4 py-1.5 rounded-xl text-xs font-black">التفاصيل</button></div>
+     {onDonate && <button onClick={() => onDonate(item)} className="w-full mt-4 bg-slate-900 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2"><Heart size={16}/> تبرع</button>}
+  </div>
 );
 
 const Footer = ({ setView }) => (
-  <footer className="bg-white border-t border-slate-100 pt-16 pb-32 mt-20">
-    <div className="max-w-7xl mx-auto px-6 text-right">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 text-right">
-        
-        <div className="space-y-6">
-          <div className="flex flex-col gap-2">
-            <h4 className="text-xl font-black text-slate-900">اتصل بنا</h4>
-            <p className="text-xs text-slate-400 font-bold uppercase italic">Contact Us</p>
-          </div>
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 justify-start group cursor-pointer">
-              <div className="p-2 bg-green-50 text-green-600 rounded-lg"><Phone size={18}/></div>
-              <p className="font-black text-slate-600 text-sm">0656 66970</p>
-            </div>
-            <div className="flex items-center gap-3 justify-start group cursor-pointer">
-              <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Mail size={18}/></div>
-              <p className="font-black text-slate-600 text-sm">sales@mcc-jo.com</p>
-            </div>
-            <div className="flex items-start gap-3 justify-start group cursor-pointer text-right">
-              <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg mt-1"><MapPinIcon size={18}/></div>
-              <div className="space-y-1">
-                <p className="font-black text-slate-600 text-sm leading-none">عمان، الجاردنز، شارع وصفي التل</p>
-                <p className="text-[10px] text-slate-400 font-bold leading-tight">Mosa Center, No:78</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <h4 className="text-xl font-black text-slate-900">بوابتي الرقمية</h4>
-          <ul className="space-y-3">
-            {['لوحة التحكم', 'بلاغاتي الميدانية', 'سجل مساهماتي', 'الملف الشخصي'].map((item, i) => (
-              <li key={i} className="group flex items-center gap-3 cursor-pointer justify-start">
-                <div className="w-1.5 h-1.5 bg-slate-200 rounded-full group-hover:bg-green-500 transition-all shrink-0"></div>
-                <span className="text-sm font-black text-slate-500 group-hover:text-slate-900 transition-colors">{item}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="space-y-6">
-          <h4 className="text-xl font-black text-slate-900">حول المنصة</h4>
-          <ul className="space-y-3 text-right">
-            <li onClick={() => setView('partner-portal')} className="flex items-center gap-3 justify-start cursor-pointer"><div className="w-1.5 h-1.5 bg-slate-200 rounded-full"></div><span className="text-sm font-black text-slate-500">عن طريقنا</span></li>
-            <li className="flex items-center gap-3 justify-start cursor-pointer"><div className="w-1.5 h-1.5 bg-slate-200 rounded-full"></div><span className="text-sm font-black text-slate-500">سياسة الخصوصية</span></li>
-          </ul>
-          <div className="flex gap-4 pt-4 justify-start">
-             {[Facebook, Twitter, Instagram].map((Icon, i) => (
-               <button key={i} className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-900 hover:text-white transition-all shadow-sm"><Icon size={18} /></button>
-             ))}
-          </div>
-        </div>
-
-        <div>
-           <div className="bg-green-600 p-8 rounded-[3rem] text-white shadow-xl relative overflow-hidden group">
-              <div className="relative z-10 text-right">
-                 <div className="flex items-center gap-3 mb-4 justify-start">
-                    <ShieldCheck className="text-white animate-pulse shrink-0" size={28}/>
-                    <p className="font-black text-sm uppercase italic">توثيق ذكي 100%</p>
-                 </div>
-                 <p className="text-xs text-green-50 leading-relaxed font-bold">جميع البلاغات تخضع لنظام التحقق من الموقع والصورة لضمان المصداقية وتوجيه الدعم لمستحقيه فعلياً.</p>
-              </div>
-              <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
-           </div>
-        </div>
-
-      </div>
-      <div className="mt-16 pt-8 border-t border-slate-50 flex flex-col md:flex-row justify-between items-center gap-4">
-         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] italic">© 2024 Tareeqna Jordan | All Rights Reserved</p>
-         <div className="flex items-center gap-2 opacity-30 grayscale pointer-events-none">
-            <span className="text-[8px] font-black text-slate-900">Powered by</span>
-            <TrendingUp size={12} className="text-green-600"/>
-            <span className="text-[8px] font-black text-slate-900">Jordan AI Engine</span>
-         </div>
-      </div>
-    </div>
+  <footer className="bg-white border-t border-slate-100 pt-16 pb-32 mt-20 px-6 text-right">
+     <div className="grid grid-cols-2 gap-8"><div className="space-y-4"><h4 className="font-black">عن طريقنا</h4><p className="text-xs text-slate-500 leading-relaxed">المنصة الوطنية للرصد والتطوير التشاركي.</p></div><div className="space-y-4"><h4 className="font-black">روابط</h4><ul className="text-xs space-y-2 text-slate-500"><li onClick={() => setView('partner-portal')} className="cursor-pointer hover:text-green-600">الشركاء</li><li>سياسة الخصوصية</li></ul></div></div>
+     <div className="mt-8 pt-8 border-t border-slate-100 text-center text-[10px] font-bold text-slate-400">© 2025 Tareeqna Jordan</div>
   </footer>
 );
 
-const LoadingScreen = () => (
-  <div className="h-screen flex flex-col items-center justify-center bg-[#F8FAFC] gap-6 animate-in fade-in text-center px-10 leading-none text-right">
-    <div className="relative leading-none text-right text-right">
-      <div className="w-16 h-16 md:w-20 md:h-20 border-4 border-green-100 border-t-green-600 rounded-full animate-spin leading-none text-right"></div>
-      <TrendingUp className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-green-600 leading-none text-right" size={32} />
-    </div>
-    <div className="space-y-2 leading-none text-right text-right">
-       <p className="text-xl md:text-2xl font-black text-slate-800 italic uppercase leading-none tracking-tighter text-right">طريق<span className="text-green-600 leading-none text-right">نا</span></p>
-       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none text-right text-right">المنصة الوطنية الأردنية</p>
-    </div>
-  </div>
+const PartnerLogin = ({ onLogin, onBack }) => (
+  <div className="min-h-screen flex items-center justify-center p-6 bg-slate-900 text-center"><div className="bg-white w-full max-w-sm p-10 rounded-[3rem] space-y-6"><div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto text-indigo-600"><Lock size={40}/></div><h2 className="text-2xl font-black">بوابة الشركاء</h2><input className="w-full p-4 bg-slate-50 rounded-2xl text-center font-black outline-none" placeholder="CODE" onChange={(e) => { if(e.target.value === 'JORDAN2030') onLogin(); }} /><button onClick={onBack} className="text-slate-400 font-bold text-sm">عودة</button></div></div>
 );
 
-const DonationPopup = ({ item, onClose, onConfirm }) => {
-  const [amount, setAmount] = useState('10');
-  const [name, setName] = useState('');
-  const [anon, setAnon] = useState(false);
-  return (
-    <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-2xl z-[100] flex items-end md:items-center justify-center p-4 md:p-6 animate-in fade-in duration-300 leading-none text-right">
-      <div className="bg-white rounded-t-[3rem] md:rounded-[4rem] w-full max-w-lg p-8 md:p-16 space-y-8 shadow-2xl animate-in slide-in-from-bottom-20 md:zoom-in-95 text-right leading-none text-right text-right text-right">
-        <div className="flex justify-between items-center leading-none text-right w-full leading-none text-right text-right text-right text-right"><h3 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tighter italic uppercase text-right leading-none text-right text-right text-right text-right">ساهم في البناء</h3><button onClick={onClose} className="p-3 bg-slate-100 rounded-full shadow-sm active:scale-90 leading-none text-right text-right text-right text-right text-right"><X size={20} className="leading-none text-right text-right text-right text-right"/></button></div>
-        <div className="bg-green-50 p-6 md:p-10 rounded-[2rem] border border-green-100 shadow-inner text-center leading-none text-right text-right text-right text-right"><p className="font-black text-2xl md:text-3xl leading-[1.1] tracking-tight italic text-center leading-none text-right text-right text-right text-right">{item.item.location}</p></div>
-        <div className="space-y-4 md:space-y-6 leading-none text-right text-right text-right text-right text-right"><label className="text-xs font-black text-slate-400 mr-2 uppercase tracking-[0.3em] opacity-70 leading-none block italic text-right w-full leading-none text-right text-right text-right text-right">Contribution (JOD)</label><input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full p-8 md:p-10 bg-slate-50 border-2 border-transparent rounded-[2rem] md:rounded-[3rem] font-black text-center text-4xl md:text-6xl outline-none focus:border-green-600 focus:bg-white transition-all shadow-inner text-slate-900 italic leading-none text-right text-right text-right text-right" /></div>
-        <div className="space-y-6 md:space-y-8 text-right leading-none text-right text-right text-right text-right text-right text-right text-right text-right"><input placeholder="الاسم الكامل" disabled={anon} className="w-full p-6 md:p-8 bg-white border-2 border-slate-100 rounded-[1.8rem] md:rounded-[2.5rem] font-black outline-none focus:border-green-600 disabled:bg-slate-50 transition-all text-xl md:text-2xl shadow-sm text-right leading-none text-right text-right text-right text-right text-right" value={name} onChange={e => setName(e.target.value)} /><label className="flex items-center gap-4 md:gap-6 cursor-pointer group justify-end leading-none text-right text-right text-right text-right text-right text-right text-right text-right"><span className="text-xl md:text-2xl font-black text-slate-500 group-hover:text-slate-800 transition-colors italic leading-none text-right text-right text-right text-right text-right text-right text-right text-right">التبرع بهوية مجهولة</span><input type="checkbox" className="hidden" checked={anon} onChange={e => setAnon(e.target.checked)} /><div className={`w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl border-4 flex items-center justify-center transition-all leading-none ${anon ? 'bg-green-600 border-green-600 shadow-xl' : 'bg-white border-slate-200'}`}>{anon && <CheckCircle2 size={24} className="text-white leading-none text-right text-right text-right" />}</div></label></div>
-        <button onClick={() => onConfirm({ amount, donorName: name, anonymousName: anon, itemId: item.item.id, type: item.type })} className="w-full bg-amber-500 text-white py-8 md:py-10 rounded-[2rem] md:rounded-[3rem] font-black text-3xl md:text-4xl shadow-xl shadow-amber-200 active:scale-95 transition-all flex items-center justify-center gap-4 group leading-none italic uppercase text-center text-right leading-none text-right text-right text-right text-right text-right text-right text-right">تأكيد المساهمة <CheckCircle size={28} className="group-hover:scale-110 transition-transform leading-none text-right" /></button>
-      </div>
-    </div>
-  );
-};
+// --- 4. المكون الرئيسي App (يأتي في النهاية دائماً) ---
 
-const InfoPopup = ({ item, onClose }) => (
-  <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-3xl z-[100] flex items-center justify-center p-4 md:p-6 animate-in fade-in leading-none text-right text-right">
-    <div className="bg-white rounded-[3rem] md:rounded-[6rem] w-full max-w-4xl p-8 md:p-20 space-y-10 shadow-2xl relative overflow-hidden animate-in zoom-in ring-1 ring-slate-100 text-right leading-none text-right text-right text-right">
-      <button onClick={onClose} className="absolute top-6 right-6 md:top-12 md:right-12 p-4 bg-white/50 backdrop-blur-md rounded-full text-slate-800 z-20 border border-slate-200 shadow-xl active:scale-90 leading-none text-right text-right text-right"><X size={32} className="leading-none text-right text-right"/></button>
-      <div className="relative group text-right leading-none text-right text-right">
-        <img src={item.img} className="w-full h-[300px] md:h-[550px] rounded-[2.5rem] md:rounded-[5rem] object-cover shadow-2xl transition-transform duration-[3s] group-hover:scale-105 leading-none text-right text-right text-right" alt="Detail" />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent rounded-[2.5rem] md:rounded-[5rem] leading-none text-right text-right"></div>
-        <div className="absolute bottom-6 right-6 md:bottom-12 md:right-12 leading-none text-right text-right text-right text-right">
-          <p className="text-slate-200 font-bold text-base md:text-lg mb-4 flex items-center gap-3 justify-end uppercase tracking-[0.3em] leading-none italic text-right leading-none text-right text-right text-right text-right text-right"><MapPin size={24} className="text-green-500 leading-none text-right text-right text-right"/> {item.location}</p>
-          <h3 className="text-3xl md:text-6xl font-black text-white leading-tight tracking-tighter uppercase italic text-right leading-none text-right text-right text-right text-right text-right">التفاصيل الفنية</h3>
+const App = () => {
+  const [view, setView] = useState('landing'); 
+  const [user, setUser] = useState(null);
+  const [reports, setReports] = useState(DEMO_REPORTS);
+  const [teams, setTeams] = useState(DEMO_TEAMS);
+  const [activeData, setActiveData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // إخفاء شاشة التحميل بعد ثانيتين
+  useEffect(() => { setTimeout(() => setLoading(false), 2000); }, []);
+
+  if (loading) return <LoadingScreen />;
+
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 rtl text-right" style={{ fontFamily: "'Cairo', sans-serif" }} dir="rtl">
+      <header className="bg-white/80 backdrop-blur-xl border-b border-slate-100 sticky top-0 z-[60] p-4 flex justify-between items-center shadow-sm">
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => setView('landing')}>
+          <div className="bg-green-600 p-2 rounded-xl text-white"><TrendingUp size={24} /></div>
+          <TareeqnaLogo />
         </div>
-      </div>
-      <div className="bg-slate-50 p-8 md:p-12 rounded-[2.5rem] md:rounded-[4.5rem] border border-slate-100 shadow-inner space-y-8 text-right leading-relaxed text-right text-right text-right text-right">
-         <div className="inline-flex items-center gap-3 bg-indigo-600 text-white px-6 py-2 md:px-8 md:py-3 rounded-full font-black text-base md:text-lg shadow-xl leading-none italic text-right text-right leading-none text-right text-right text-right text-right"><ShieldCheck size={24} className="leading-none text-right text-right text-right"/> تقرير هندسي معتمد</div>
-         <p className="text-slate-600 text-xl md:text-3xl leading-[1.6] font-medium tracking-tight text-right leading-relaxed italic text-right text-right text-right text-right text-right">يخضع هذا الموقع لرقابة مهندسي المساحة والتعبيد في أمانة عمان الكبرى لضمان جودة التعبيد لأكثر من 15 عاماً ومقاومة كافة الظروف الجوية القاسية.</p>
-      </div>
-    </div>
-  </div>
-);
+        <button onClick={() => setView('landing')} className="p-2.5 bg-amber-50 text-amber-600 rounded-xl"><Trophy size={20}/></button>
+      </header>
 
-const LeaderboardView = ({ donations, onBack }) => {
-  const topDonors = useMemo(() => {
-    const grouped = donations.reduce((acc, d) => {
-      const name = d.anonymousName ? "فاعل خير" : (d.donorName || "مجهول");
-      if (!acc[name]) acc[name] = { name, total: 0 };
-      acc[name].total += Number(d.amount); return acc;
-    }, {});
-    return Object.values(grouped).sort((a,b) => b.total - a.total).slice(0, 10);
-  }, [donations]);
+      <main className="max-w-7xl mx-auto px-4 pb-32 pt-6">
+        {view === 'landing' && <LandingView setView={setView} reports={reports} sponsors={SPONSORS} />}
+        {view === 'roads' && <div className="space-y-6"><h2 className="text-2xl font-black">الشوارع</h2><div className="grid gap-6">{reports.filter(r => r.type === 'road').map(item => <DetailedCard key={item.id} item={item} onDonate={() => { setActiveData(item); setView('payment'); }} onInfo={() => { setActiveData(item); setView('detail'); }} />)}</div></div>}
+        {view === 'stadiums' && <div className="space-y-6"><h2 className="text-2xl font-black">الملاعب</h2><div className="grid gap-6">{reports.filter(r => r.type === 'stadium').map(item => <DetailedCard key={item.id} item={item} onDonate={() => { setActiveData(item); setView('payment'); }} onInfo={() => { setActiveData(item); setView('detail'); }} />)}</div></div>}
+        {view === 'volunteering' && <VolunteeringHub teams={teams} user={user} onBack={() => setView('landing')} setView={setView} setActiveData={setActiveData} />}
+        {view === 'join-team' && <JoinTeamForm team={activeData} onBack={() => setView('volunteering')} onSuccess={() => setView('volunteering')} />}
+        {view === 'create-team' && <VolunteeringHub teams={teams} user={user} onBack={() => setView('volunteering')} setView={setView} setActiveData={setActiveData} initialMode="create" />}
+        {view === 'detail' && <DetailView item={activeData} onBack={() => setView('landing')} onDonate={() => setView('payment')} />}
+        {view === 'payment' && <PaymentSimulation item={activeData} onBack={() => setView('detail')} onSuccess={() => setView('landing')} />}
+        {view === 'partner-portal' && <PartnerLogin onLogin={() => setView('odoo-dashboard')} onBack={() => setView('landing')} />}
+        {view === 'odoo-dashboard' && <OdooDashboard onLogout={() => setView('landing')} />}
+        {view === 'report' && <CameraReportView onComplete={() => setView('landing')} user={user} />}
+        {view === 'donate' && <DonateUnifiedView reports={reports} onDonate={(item) => { setActiveData(item); setView('payment'); }} />}
+      </main>
 
-  return (
-    <div className="py-8 md:py-12 px-2 space-y-10 animate-in slide-in-from-left text-right leading-none text-right">
-      <div className="flex items-center gap-4 md:gap-6 text-right justify-end text-right"><div className="text-right text-right text-right"><h2 className="text-3xl md:text-5xl font-black text-slate-800 tracking-tighter italic uppercase text-right leading-none shrink-0 text-right text-right">لوحة الشرف</h2><p className="text-slate-400 font-bold text-[10px] md:text-sm uppercase tracking-[0.2em] mt-2 italic text-right leading-none text-right text-right">Elite National Contributors</p></div><button onClick={onBack} className="p-4 bg-white rounded-2xl border hover:bg-slate-50 active:scale-90 shadow-sm leading-none shrink-0 text-right"><ChevronLeft className="rotate-180 text-right" size={28}/></button></div>
-      <div className="bg-white rounded-[2.5rem] md:rounded-[5rem] border border-slate-100 shadow-2xl overflow-hidden ring-1 ring-slate-100 text-right">
-        {topDonors.map((d, i) => (
-          <div key={i} className="p-8 md:p-14 flex items-center justify-between border-b border-slate-50 last:border-0 hover:bg-amber-50/20 transition-all group text-right leading-none text-right">
-            <p className="text-green-600 font-black text-3xl md:text-5xl tracking-tighter leading-none text-left shrink-0 text-left">{d.total} <span className="text-lg md:text-xl opacity-60 font-bold leading-none text-left text-left">د.أ</span></p>
-            <div className="flex items-center gap-6 md:gap-10 text-right leading-none justify-end text-right">
-               <div className="text-right leading-none text-right"><p className="font-black text-xl md:text-3xl text-slate-800 leading-none mb-2 text-right text-right text-right">{d.name}</p><div className="flex items-center gap-2 text-green-600 text-[10px] md:text-xs font-black uppercase tracking-widest leading-none text-right justify-end text-right"><UserCheck size={16} className="text-right"/> مساهم وطني موثق</div></div>
-               <div className={`w-14 h-14 md:w-20 md:h-20 rounded-2xl md:rounded-[2rem] flex items-center justify-center font-black text-2xl md:text-4xl shadow-lg border-4 text-right ${i === 0 ? 'bg-amber-500 text-white border-amber-200 shadow-amber-100' : 'bg-slate-50 text-slate-300'}`}>{i+1}</div>
-            </div>
-          </div>
-        ))}
-      </div>
+      <Footer setView={setView} />
+      <NashmiAI />
+
+      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[96%] max-w-lg bg-slate-900/95 backdrop-blur-2xl rounded-[2.5rem] p-2 flex justify-around items-center z-[70] shadow-2xl border border-white/10">
+        <NavBtn icon={<Home />} label="الرئيسية" active={view === 'landing'} onClick={() => setView('landing')} />
+        <NavBtn icon={<HandHeart />} label="تطوع" active={view === 'volunteering'} onClick={() => setView('volunteering')} />
+        <div className="relative -top-6"><button onClick={() => setView('report')} className="bg-green-600 text-white p-4 rounded-[2rem] shadow-2xl border-[6px] border-[#F8FAFC]"><Plus size={28} strokeWidth={3} /></button></div>
+        <NavBtn icon={<Building2 />} label="ملاعب" active={view === 'stadiums'} onClick={() => setView('stadiums')} />
+        <NavBtn icon={<Wallet />} label="تبرع" active={view === 'donate'} onClick={() => setView('donate')} />
+      </nav>
     </div>
   );
 };
-
-const DonateUnifiedView = ({ reports, onDonate }) => (
-  <div className="py-8 md:py-12 space-y-12 animate-in fade-in text-right leading-none text-right">
-    <div className="bg-amber-50 p-8 md:p-16 rounded-[2.5rem] md:rounded-[4rem] border-2 border-amber-100 flex flex-col md:flex-row items-center gap-8 shadow-inner relative overflow-hidden text-right leading-none text-right">
-       <div className="space-y-4 md:space-y-6 relative z-10 text-right w-full leading-none order-2 md:order-1 text-right text-right">
-         <h2 className="text-3xl md:text-4xl font-black text-amber-900 leading-none italic uppercase text-right w-full leading-none text-right text-right">صندوق الإعمار الرقمي</h2>
-         <p className="text-amber-700 text-lg md:text-2xl font-bold opacity-80 leading-relaxed italic text-right leading-relaxed text-right text-right">تتبرعاتك تذهب مباشرة لصيانة شوارعنا وملاعبنا استعداداً للاستحقاقات الوطنية الكبرى. كل دينار يساهم في جعل وطننا أكثر أماناً وجمالاً.</p>
-       </div>
-       <div className="p-8 bg-white rounded-[2rem] shadow-xl relative z-10 leading-none order-1 md:order-2 text-right"><Wallet className="text-amber-600 md:w-16 md:h-16 text-right" size={50}/></div>
-    </div>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10 text-right leading-none text-right text-right">
-       {reports.length > 0 ? reports.map(r => (<div key={r.id} className="bg-white p-6 md:p-10 rounded-[2.5rem] md:rounded-[4rem] border border-slate-100 shadow-sm space-y-6 group hover:shadow-xl transition-all leading-none text-right flex flex-col h-full text-right"><img src={r.img} className="w-full h-48 md:h-56 rounded-[2rem] md:rounded-[3rem] object-cover shadow-xl grayscale-[0.2] group-hover:grayscale-0 transition-all duration-500 text-right" alt="Repair" /><div className="space-y-6 text-right flex-1 flex flex-col justify-between leading-none text-right text-right"><h4 className="font-black text-2xl md:text-3xl truncate text-slate-800 italic leading-none text-right text-right text-right">{r.location}</h4><div className="flex justify-between items-center bg-slate-50 p-6 md:p-8 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 shadow-inner text-right leading-none text-right text-right text-right text-right"><p className="text-green-600 font-black text-2xl md:text-4xl tracking-tighter leading-none text-right shrink-0 text-right text-right">{r.collected || 0} / {r.goal || 150} <span className="text-base md:text-lg opacity-40 font-black leading-none shrink-0 text-right text-right">د.أ</span></p><button onClick={() => onDonate(r, 'road')} className="bg-slate-900 text-white px-8 md:px-12 py-3 md:py-4 rounded-2xl md:rounded-3xl font-black text-lg md:text-xl hover:bg-green-600 transition-all active:scale-95 leading-none italic uppercase transition-all shrink-0 text-center text-right text-right">تبرع</button></div></div></div>)) : <div className="col-span-full py-20 text-center text-slate-300 font-bold italic border-2 border-dashed border-slate-50 rounded-[2rem] text-right">لا توجد بلاغات نشطة حالياً.</div>}
-    </div>
-  </div>
-);
-
-const PartnerPortalView = ({ onBack }) => (
-  <div className="py-8 md:py-12 space-y-10 animate-in fade-in text-right leading-none text-right text-right">
-     <div className="flex items-center gap-6 leading-none text-right justify-end text-right text-right"><h2 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tighter italic uppercase text-right leading-none shrink-0 text-right text-right">بوابة الشركاء</h2><button onClick={onBack} className="p-4 bg-white rounded-2xl border hover:bg-slate-50 active:scale-90 shadow-sm transition-all leading-none shrink-0 text-right"><ChevronLeft className="rotate-180 text-right text-right" size={28}/></button></div>
-     <div className="bg-slate-900 p-12 md:p-20 rounded-[3rem] border border-white/5 shadow-2xl text-center space-y-10 relative overflow-hidden ring-1 ring-white/10 text-right">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-600 rounded-full blur-[140px] opacity-10 leading-none text-right text-right"></div>
-        <div className="relative z-10 space-y-8 text-center leading-none text-right text-center text-center"><Lock className="mx-auto text-indigo-400 leading-none text-right text-right" size={60} /><h3 className="text-3xl md:text-5xl font-black text-white leading-none italic uppercase text-center text-center text-center">المؤسسات المعتمدة</h3><p className="text-slate-400 font-medium leading-relaxed max-w-xl mx-auto text-base md:text-xl italic opacity-80 text-center leading-relaxed italic text-center text-center">بوابة حصرياً لمسؤولي أمانة عمان الكبرى والبلديات لإدارة المشاريع ميدانياً ومتابعة الأثر.</p><div className="flex flex-col gap-5 max-w-sm mx-auto pt-10 text-center text-center text-center"><input type="password" placeholder="كود الدخول الموحد" className="p-6 md:p-8 bg-white/5 border border-white/10 rounded-[1.5rem] md:rounded-[2.5rem] outline-none focus:border-indigo-500 text-center font-black text-white text-2xl md:text-3xl placeholder:text-slate-800 shadow-inner text-right leading-none transition-all text-center text-center" /><button className="bg-indigo-600 text-white py-6 md:py-8 rounded-[1.8rem] md:rounded-[2.5rem] font-black text-3xl md:text-4xl shadow-xl hover:bg-indigo-700 active:scale-95 leading-none transition-all uppercase text-center text-center">دخول</button></div></div>
-     </div>
-  </div>
-);
 
 export default App;
