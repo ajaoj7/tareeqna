@@ -228,23 +228,76 @@ const DetailView = ({ item, onBack, onDonate }) => {
 };
 
 const PaymentSimulation = ({ item, onBack, onSuccess }) => {
-  const [processing, setProcessing] = useState(false);
+  const [processing, setProcessing] = useState('idle'); // idle, loading, success
+  const [amount, setAmount] = useState('');
+  const [method, setMethod] = useState('visa'); // visa or applepay
+
   const handlePay = () => {
-    setProcessing(true);
+    if (!amount || Number(amount) <= 0) return;
+    setProcessing('loading');
     setTimeout(() => {
-      setProcessing(false);
-      alert("تمت عملية التبرع بنجاح! شكراً لمساهمتك الوطنية.");
-      onSuccess();
+      setProcessing('success');
+      setTimeout(() => {
+        onSuccess();
+      }, 2500);
     }, 2000);
   };
+
+  const addAmount = (val) => {
+    setAmount(prev => String((Number(prev) || 0) + val));
+  };
+
+  if (processing === 'success') {
+    return (
+      <div className="animate-in zoom-in duration-500 text-center pb-20 pt-20">
+         <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+           <CheckCircle2 size={50} />
+         </div>
+         <h2 className="text-3xl font-black text-slate-800 mb-2">تمت عملية التبرع بنجاح!</h2>
+         <p className="text-slate-500 font-bold">شكراً لمساهمتك الوطنية في بناء الأردن.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-in zoom-in duration-300 text-right pb-20">
       <div className="flex items-center gap-4 mb-6"><button onClick={onBack} className="p-3 bg-white rounded-xl shadow-sm border"><ChevronLeft className="rotate-180"/></button><h2 className="text-2xl font-black text-slate-800">بوابة الدفع الآمن</h2></div>
       <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100 space-y-6">
          <div className="flex justify-between items-center border-b border-slate-100 pb-4"><span className="text-slate-500 font-bold">المشروع:</span><span className="font-black text-slate-800 text-sm">{item?.location}</span></div>
-         <div className="space-y-4"><label className="block text-sm font-bold text-slate-400">قيمة التبرع (د.أ)</label><div className="grid grid-cols-3 gap-3">{[5, 10, 20].map(amt => (<button key={amt} className="py-3 rounded-xl border-2 border-slate-100 font-black hover:border-green-500 hover:bg-green-50 transition-all">{amt}</button>))}</div><input type="number" placeholder="مبلغ آخر" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-center" /></div>
-         <div className="space-y-4"><label className="block text-sm font-bold text-slate-400">بيانات البطاقة</label><div className="relative"><CreditCard className="absolute top-4 right-4 text-slate-400" size={20}/><input placeholder="0000 0000 0000 0000" className="w-full p-4 pr-12 bg-slate-50 rounded-2xl outline-none font-mono font-bold text-left ltr" dir="ltr" /></div></div>
-         <button onClick={handlePay} disabled={processing} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-lg shadow-xl flex items-center justify-center gap-2">{processing ? <Loader2 className="animate-spin"/> : <Lock size={18}/>} {processing ? 'جاري المعالجة...' : 'دفع آمن الآن'}</button>
+         
+         <div className="space-y-4">
+           <label className="block text-sm font-bold text-slate-400">إضافة قيمة للتبرع (د.أ)</label>
+           <div className="grid grid-cols-4 gap-3">
+             {[5, 10, 20, 50].map(amt => (
+               <button key={amt} onClick={() => addAmount(amt)} className="py-3 rounded-xl border-2 border-slate-100 font-black hover:border-green-500 hover:bg-green-50 active:scale-95 transition-all text-slate-700">+{amt}</button>
+             ))}
+           </div>
+           <input type="number" placeholder="المبلغ الإجمالي للتبرع" value={amount} onChange={e => setAmount(e.target.value)} className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-center text-2xl text-green-700 border-2 border-transparent focus:border-green-500 transition-all" />
+         </div>
+
+         <div className="space-y-4">
+           <label className="block text-sm font-bold text-slate-400">طريقة الدفع</label>
+           <div className="grid grid-cols-2 gap-4">
+             <button onClick={() => setMethod('visa')} className={`py-4 rounded-2xl border-2 font-black flex flex-col items-center gap-2 transition-all ${method === 'visa' ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm' : 'border-slate-100 text-slate-500 hover:bg-slate-50'}`}>
+               <CreditCard size={28} /> بطاقة بنكية
+             </button>
+             <button onClick={() => setMethod('apple')} className={`py-4 rounded-2xl border-2 font-black flex flex-col items-center gap-2 transition-all ${method === 'apple' ? 'border-slate-900 bg-slate-900 text-white shadow-xl' : 'border-slate-100 text-slate-500 hover:bg-slate-50'}`}>
+               <Smartphone size={28} /> Apple Pay
+             </button>
+           </div>
+         </div>
+
+         {method === 'visa' && (
+           <div className="space-y-4 animate-in fade-in">
+             <div className="relative"><CreditCard className="absolute top-4 right-4 text-slate-400" size={20}/><input placeholder="رقم البطاقة: 0000 0000 0000 0000" className="w-full p-4 pr-12 bg-slate-50 rounded-2xl outline-none font-mono font-bold text-left ltr" dir="ltr" /></div>
+             <div className="flex gap-4"><input placeholder="MM/YY" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-mono font-bold text-center" /><input placeholder="CVC" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-mono font-bold text-center" /></div>
+           </div>
+         )}
+
+         <button onClick={handlePay} disabled={processing === 'loading' || !amount || Number(amount) <= 0} className="w-full bg-green-600 text-white py-5 rounded-2xl font-black text-xl shadow-xl shadow-green-200 flex items-center justify-center gap-2 hover:bg-green-700 active:scale-95 disabled:bg-slate-300 disabled:shadow-none transition-all">
+            {processing === 'loading' ? <Loader2 className="animate-spin" size={24}/> : <Lock size={20}/>} 
+            {processing === 'loading' ? 'جاري المعالجة...' : `دفع ${amount ? amount + ' د.أ' : ''} بآمان`}
+         </button>
       </div>
     </div>
   );
@@ -260,62 +313,123 @@ const OdooDashboard = ({ onLogout }) => (
 
 const JoinTeamForm = ({ team, onBack, onSuccess }) => {
   const [formData, setFormData] = useState({ name: '', dob: '', phone: '', motivation: '' });
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
+
   const handleSubmit = () => {
+     setError(null);
+     if (!formData.name || !formData.phone || !formData.dob) {
+       return setError("يرجى تعبئة جميع الحقول المطلوبة.");
+     }
      const birthDate = new Date(formData.dob);
      const age = new Date().getFullYear() - birthDate.getFullYear();
-     if (age < 18) return alert("عذراً، يجب أن يكون عمرك 18 عاماً فما فوق.");
-     if (!formData.name || !formData.phone) return alert("يرجى تعبئة الحقول.");
-     alert("تم إرسال طلبك لقائد الفريق!");
-     onSuccess();
+     if (age < 18) {
+       return setError("عذراً، يجب أن يكون عمرك 18 عاماً فما فوق للانضمام للفرق الميدانية.");
+     }
+     
+     setSuccess(true);
+     setTimeout(() => {
+       onSuccess();
+     }, 2500);
   };
+
+  if (success) {
+    return (
+      <div className="py-20 animate-in zoom-in text-center">
+         <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+           <CheckCircle2 size={50} />
+         </div>
+         <h2 className="text-3xl font-black text-slate-800 mb-2">تم إرسال طلبك بنجاح!</h2>
+         <p className="text-slate-500 font-bold">سيقوم قائد الفريق بالتواصل معك قريباً.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="py-6 animate-in slide-in-from-bottom-10 text-right pb-20">
        <button onClick={onBack} className="flex items-center gap-2 text-slate-500 font-bold mb-6"><ChevronLeft className="rotate-180"/> عودة للفرق</button>
        <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100">
           <div className="flex items-center gap-4 mb-6 border-b border-slate-100 pb-4"><div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-600"><HandHeart size={32}/></div><div><h2 className="text-xl font-black text-slate-800">استمارة التطوع</h2><p className="text-xs text-slate-500">فريق: <span className="text-green-600 font-bold">{team?.teamName}</span></p></div></div>
+          
+          {error && (
+            <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 flex items-center gap-2 font-bold text-sm">
+              <AlertCircle size={18}/> {error}
+            </div>
+          )}
+
           <div className="space-y-4">
-             <div><label className="text-xs font-bold text-slate-500">الاسم</label><input className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-right" value={formData.name} onChange={e=>setFormData({...formData, name: e.target.value})} /></div>
-             <div><label className="text-xs font-bold text-slate-500">تاريخ الميلاد</label><input type="date" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-right" value={formData.dob} onChange={e=>setFormData({...formData, dob: e.target.value})} /></div>
-             <div><label className="text-xs font-bold text-slate-500">رقم الهاتف</label><input type="tel" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-right" value={formData.phone} onChange={e=>setFormData({...formData, phone: e.target.value})} /></div>
+             <div><label className="text-xs font-bold text-slate-500">الاسم</label><input className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-right focus:border-green-500 border-2 border-transparent transition-all" value={formData.name} onChange={e=>setFormData({...formData, name: e.target.value})} /></div>
+             <div><label className="text-xs font-bold text-slate-500">تاريخ الميلاد</label><input type="date" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-right focus:border-green-500 border-2 border-transparent transition-all" value={formData.dob} onChange={e=>setFormData({...formData, dob: e.target.value})} /></div>
+             <div><label className="text-xs font-bold text-slate-500">رقم الهاتف</label><input type="tel" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-right focus:border-green-500 border-2 border-transparent transition-all" placeholder="07XXXXXXXX" value={formData.phone} onChange={e=>setFormData({...formData, phone: e.target.value})} /></div>
           </div>
-          <button onClick={handleSubmit} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-lg mt-6 shadow-xl hover:bg-green-600 transition-all">إرسال طلب الانضمام</button>
+          <button onClick={handleSubmit} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-lg mt-6 shadow-xl hover:bg-green-600 transition-all active:scale-95">إرسال طلب الانضمام</button>
        </div>
     </div>
   );
 };
 
-const VolunteeringHub = ({ teams, user, onBack, setView, setActiveData, initialMode }) => {
+const VolunteeringHub = ({ teams, user, onBack, setView, setActiveData, initialMode, setTeams }) => {
   const [viewState, setViewState] = useState(initialMode || 'hub');
   const [teamForm, setTeamForm] = useState({ name: '', task: '', location: '', count: '', phone: '' });
+  const [error, setError] = useState(null);
 
   const handleCreate = async () => {
-    if (!teamForm.name) return alert("يرجى تعبئة الحقول");
+    setError(null);
+    if (!teamForm.name || !teamForm.task || !teamForm.location) {
+       return setError("يرجى تعبئة الحقول الأساسية (الاسم، النشاط، الموقع).");
+    }
+
+    const newTeamData = {
+       teamName: teamForm.name, 
+       task: teamForm.task, 
+       location: teamForm.location, 
+       membersCount: teamForm.count || 10, 
+       leaderId: user?.uid || 'guest', 
+       createdAt: new Date().toISOString(), 
+       members: 1,
+       seasonPoints: VOLUNTEER_TASKS.find(t => t.label === teamForm.task)?.points * 10 || 20
+    };
+
     try {
-        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'teams'), {
-            teamName: teamForm.name, task: teamForm.task, location: teamForm.location, 
-            membersCount: teamForm.count, leaderId: 'guest', createdAt: new Date().toISOString(), members: 1
-        });
+        const docRef = await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'teams'), newTeamData);
+        if (setTeams) {
+           setTeams(prev => [{id: docRef.id, ...newTeamData}, ...prev]);
+        }
         setViewState('success');
-    } catch(e) { alert("تم إنشاء الفريق (محاكاة)"); setViewState('success'); }
+    } catch(e) { 
+        // دعم الديمو في حال فشل الاتصال بقاعدة البيانات
+        if (setTeams) {
+           setTeams(prev => [{id: Math.random().toString(), ...newTeamData}, ...prev]);
+        }
+        setViewState('success'); 
+    }
   };
 
   if (viewState === 'success') return (
        <div className="bg-white p-10 rounded-[3rem] text-center space-y-6 shadow-xl border border-green-100 animate-in zoom-in mt-10">
-           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto text-green-600"><CheckCircle2 size={40}/></div>
-           <h3 className="text-2xl font-black text-slate-800">تم إنشاء الفريق بنجاح!</h3>
-           <button onClick={() => setViewState('hub')} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black mt-4">العودة للقائمة</button>
+           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto text-green-600 shadow-inner"><CheckCircle2 size={40}/></div>
+           <h3 className="text-2xl font-black text-slate-800">تم إطلاق فريقك بنجاح!</h3>
+           <p className="text-slate-500 font-bold">تم إدراج الفريق في قائمة التطوع الوطنية.</p>
+           <button onClick={() => setViewState('hub')} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black mt-4 hover:bg-slate-800 transition-all">العودة للقائمة</button>
        </div>
   );
 
   if (viewState === 'create') return (
         <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4 animate-in slide-in-from-bottom-10 mt-10 text-right pb-10">
-            <div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-slate-800">تأسيس فريق</h3><button onClick={() => setViewState('hub')}><X/></button></div>
-            <div className="space-y-4">
-                <div><label className="text-xs font-bold text-slate-500">اسم الفريق</label><input className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-green-500 text-right" value={teamForm.name} onChange={e => setTeamForm({...teamForm, name: e.target.value})}/></div>
-                <div><label className="text-xs font-bold text-slate-500">نوع النشاط</label><select className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none text-right" onChange={e => setTeamForm({...teamForm, task: e.target.value})}><option value="">اختر المهمة...</option>{VOLUNTEER_TASKS.map((t,i) => <option key={i} value={t.label}>{t.label} ({t.points} نقاط)</option>)}</select></div>
-                <div><label className="text-xs font-bold text-slate-500">الموقع</label><input className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none text-right" value={teamForm.location} onChange={e => setTeamForm({...teamForm, location: e.target.value})} /></div>
+            <div className="flex justify-between items-center mb-6"><h3 className="text-2xl font-black text-slate-800">تأسيس فريق جديد</h3><button onClick={() => setViewState('hub')} className="p-2 bg-slate-50 rounded-full hover:bg-slate-100 transition-colors"><X/></button></div>
+            
+            {error && (
+              <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-center gap-2 font-bold text-sm">
+                <AlertCircle size={18}/> {error}
+              </div>
+            )}
+
+            <div className="space-y-5">
+                <div><label className="text-xs font-black text-slate-500 mb-1 block">اسم الفريق الميداني</label><input className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none focus:border-green-500 border-2 border-transparent text-right transition-all" value={teamForm.name} onChange={e => setTeamForm({...teamForm, name: e.target.value})} placeholder="مثال: نشامى العاصمة"/></div>
+                <div><label className="text-xs font-black text-slate-500 mb-1 block">نوع النشاط التطوعي</label><select className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none text-right focus:border-green-500 border-2 border-transparent transition-all" onChange={e => setTeamForm({...teamForm, task: e.target.value})}><option value="">اختر المهمة للحصول على نقاط...</option>{VOLUNTEER_TASKS.map((t,i) => <option key={i} value={t.label}>{t.label} ({t.points} نقاط)</option>)}</select></div>
+                <div><label className="text-xs font-black text-slate-500 mb-1 block">موقع التجمع / العمل</label><input className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-sm outline-none text-right focus:border-green-500 border-2 border-transparent transition-all" value={teamForm.location} onChange={e => setTeamForm({...teamForm, location: e.target.value})} placeholder="مثال: حديقة الاستقلال"/></div>
             </div>
-            <button onClick={handleCreate} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black mt-4 shadow-xl">إنشاء الفريق</button>
+            <button onClick={handleCreate} className="w-full bg-green-600 text-white py-4 rounded-2xl font-black mt-8 shadow-xl shadow-green-200 hover:bg-green-700 active:scale-95 transition-all text-lg">إطلاق الفريق واعتماده</button>
         </div>
   );
 
@@ -343,7 +457,7 @@ const CameraReportView = ({ onComplete, user }) => {
   const [img, setImg] = useState(null);
   const [location, setLocation] = useState('');
   const [error, setError] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState('idle'); // idle, loading, success
   const [isPC, setIsPC] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -358,14 +472,31 @@ const CameraReportView = ({ onComplete, user }) => {
 
   const handleSubmission = () => {
     if (isPC) return;
-    if (!location || !img) return setError("يرجى تعبئة كافة الحقول");
-    setSubmitting(true);
-    setTimeout(() => { setSubmitting(false); onComplete(); alert("تم استلام البلاغ بنجاح!"); }, 2000);
+    if (!location || !img) return setError("يرجى تعبئة كافة الحقول للصورة والموقع.");
+    setSubmitting('loading');
+    setTimeout(() => { 
+      setSubmitting('success'); 
+      setTimeout(() => {
+        onComplete();
+      }, 2500);
+    }, 2000);
   };
+
+  if (submitting === 'success') {
+    return (
+      <div className="p-8 text-center pt-32 animate-in zoom-in duration-500">
+         <div className="w-28 h-28 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+           <CheckCircle2 size={60} />
+         </div>
+         <h2 className="text-3xl font-black text-slate-800 mb-2">تم استلام بلاغك بنجاح!</h2>
+         <p className="text-slate-500 font-bold">شكراً لجهودك، سيتم متابعة البلاغ من قبل الجهات المختصة.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 text-right space-y-6 pt-20 animate-in slide-in-from-bottom-10">
-      <div className="flex justify-between items-center"><h2 className="text-3xl font-black text-slate-800">تبليغ جديد</h2><button onClick={onComplete}><X/></button></div>
+      <div className="flex justify-between items-center"><h2 className="text-3xl font-black text-slate-800">تبليغ جديد</h2><button onClick={onComplete} className="p-2 bg-white rounded-full shadow-sm"><X/></button></div>
       {isPC ? (
         <div className="bg-slate-900 p-8 rounded-[2rem] text-center text-white space-y-4">
            <Smartphone size={48} className="mx-auto text-green-500 animate-pulse"/>
@@ -379,9 +510,12 @@ const CameraReportView = ({ onComplete, user }) => {
              {img ? <img src={img} className="w-full h-full object-cover rounded-[2rem]" alt="preview" /> : <><Camera size={48} className="text-slate-400 mb-2"/><p className="font-bold text-slate-500">اضغط للتصوير</p></>}
              <input ref={fileInputRef} type="file" accept="image/*" capture="environment" hidden onChange={e => { const f=e.target.files[0]; if(f){ const r=new FileReader(); r.onload=()=>setImg(r.result); r.readAsDataURL(f); } }} />
           </div>
-          <input className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-right outline-none" placeholder="موقع البلاغ" value={location} onChange={e=>setLocation(e.target.value)} />
-          {error && <p className="text-red-500 font-bold text-sm">{error}</p>}
-          <button onClick={handleSubmission} disabled={submitting} className="w-full bg-green-600 text-white py-4 rounded-2xl font-bold shadow-xl">{submitting ? 'جاري الرفع...' : 'إرسال البلاغ'}</button>
+          <input className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-bold text-right outline-none focus:border-green-500 transition-all shadow-sm" placeholder="موقع البلاغ" value={location} onChange={e=>setLocation(e.target.value)} />
+          {error && <p className="text-red-500 font-bold text-sm bg-red-50 p-3 rounded-xl flex items-center gap-2"><AlertCircle size={16}/> {error}</p>}
+          <button onClick={handleSubmission} disabled={submitting === 'loading'} className="w-full bg-green-600 text-white py-5 rounded-[1.5rem] font-black text-lg shadow-xl shadow-green-200 active:scale-95 transition-all flex items-center justify-center gap-2">
+             {submitting === 'loading' ? <Loader2 className="animate-spin"/> : <Send size={20}/>} 
+             {submitting === 'loading' ? 'جاري الرفع...' : 'إرسال البلاغ'}
+          </button>
         </>
       )}
     </div>
@@ -389,18 +523,45 @@ const CameraReportView = ({ onComplete, user }) => {
 };
 
 const DonateUnifiedView = ({ reports, onDonate }) => (
-    <div className="py-8 space-y-6 animate-in fade-in text-right pb-20">
-       <h2 className="text-3xl font-black text-slate-800 pr-4 border-r-4 border-green-600">صندوق الإعمار</h2>
-       <div className="grid gap-4 md:grid-cols-2">
+    <div className="py-8 space-y-10 animate-in fade-in text-right pb-20">
+       {/* صندوق الإعمار الرقمي (البانر الذي تم إرجاعه) */}
+       <div className="bg-amber-50 p-8 md:p-12 rounded-[2.5rem] md:rounded-[3.5rem] border-2 border-amber-100 flex flex-col md:flex-row items-center gap-8 shadow-inner relative overflow-hidden">
+          <div className="space-y-4 md:space-y-6 relative z-10 w-full order-2 md:order-1">
+            <h2 className="text-3xl md:text-4xl font-black text-amber-900 italic uppercase">صندوق الإعمار الرقمي</h2>
+            <p className="text-amber-700 text-lg md:text-xl font-bold opacity-90 leading-relaxed italic">
+              تتبرعاتك تذهب مباشرة لصيانة شوارعنا وملاعبنا استعداداً للاستحقاقات الوطنية الكبرى. كل دينار يساهم في جعل وطننا أكثر أماناً وجمالاً.
+            </p>
+          </div>
+          <div className="p-6 md:p-8 bg-white rounded-[2.5rem] shadow-xl relative z-10 order-1 md:order-2 shrink-0">
+             <Wallet className="text-amber-600 w-12 h-12 md:w-16 md:h-16" />
+          </div>
+          <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-amber-200 rounded-full blur-[60px] opacity-50"></div>
+       </div>
+
+       <div className="flex items-center gap-2 px-2">
+          <h2 className="text-3xl font-black text-slate-800 pr-4 border-r-4 border-green-600">المشاريع المتاحة</h2>
+       </div>
+
+       <div className="grid gap-6 md:grid-cols-2">
           {reports && reports.length > 0 ? reports.map(r => (
-              <div key={r.id} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
-                  <img src={r.img} className="w-full h-40 object-cover rounded-2xl mb-4" alt="repair"/>
-                  <h4 className="font-bold text-lg mb-2">{r.location}</h4>
-                  <div className="flex justify-between text-xs font-bold text-slate-500 mb-4"><span>تم جمع: {r.collected}</span><span>الهدف: {r.goal}</span></div>
-                  <div className="w-full bg-slate-100 h-2 rounded-full mb-4"><div className="h-full bg-green-500 rounded-full" style={{width: `${Math.min((r.collected/r.goal)*100, 100)}%`}}></div></div>
-                  <button onClick={() => onDonate(r, 'road')} className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold">تبرع الآن</button>
+              <div key={r.id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 hover:shadow-lg transition-all group">
+                  <div className="overflow-hidden rounded-2xl mb-4 relative">
+                    <img src={r.img} className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-700" alt="repair"/>
+                    <div className="absolute top-3 right-3 bg-white/90 px-3 py-1 rounded-full text-[10px] font-black shadow-sm">{r.streetType || 'مشروع'}</div>
+                  </div>
+                  <h4 className="font-black text-xl text-slate-800 mb-4">{r.location}</h4>
+                  <div className="flex justify-between text-xs font-bold text-slate-500 mb-3">
+                    <span>تم جمع: <span className="text-green-600 text-sm">{r.collected} د.أ</span></span>
+                    <span>الهدف: {r.goal} د.أ</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2.5 rounded-full mb-6 overflow-hidden">
+                    <div className="h-full bg-gradient-to-l from-green-500 to-green-600 rounded-full transition-all duration-1000" style={{width: `${Math.min((r.collected/r.goal)*100, 100)}%`}}></div>
+                  </div>
+                  <button onClick={() => onDonate(r, 'road')} className="w-full bg-slate-900 hover:bg-green-600 text-white py-4 rounded-2xl font-black transition-colors flex items-center justify-center gap-2">
+                    <Heart size={18}/> تبرع الآن
+                  </button>
               </div>
-          )) : <p className="text-center text-slate-400 py-10">لا توجد مشاريع بحاجة للتبرع حالياً.</p>}
+          )) : <p className="text-center text-slate-400 font-bold py-10 col-span-full border-2 border-dashed border-slate-200 rounded-[2rem]">لا توجد مشاريع بحاجة للتبرع حالياً.</p>}
        </div>
     </div>
 );
@@ -475,6 +636,160 @@ const PartnerLogin = ({ onLogin, onBack }) => (
   <div className="min-h-screen flex items-center justify-center p-6 bg-slate-900 text-center"><div className="bg-white w-full max-w-sm p-10 rounded-[3rem] space-y-6"><div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto text-indigo-600"><Lock size={40}/></div><h2 className="text-2xl font-black">بوابة الشركاء</h2><input className="w-full p-4 bg-slate-50 rounded-2xl text-center font-black outline-none" placeholder="CODE" onChange={(e) => { if(e.target.value === 'JORDAN2030') onLogin(); }} /><button onClick={onBack} className="text-slate-400 font-bold text-sm">عودة</button></div></div>
 );
 
+const LeaderboardView = ({ donations, reports, teams, sponsors, user, onBack }) => {
+  const [activeTab, setActiveTab] = useState('sponsors');
+
+  const mockNames = ["سند العبادي", "محمد الرواشدة", "عمر الخطيب", "خالد الشوابكة", "طارق المجالي", "فارس الطراونة", "يزن العتوم", "عبدالله بني هاني", "ليث الخرابشة", "سيف الدين العدوان", "رائد الزعبي", "سامر النعيمات", "وليد الكوفحي", "حسن المومني", "كريم العواملة", "رامي الخوالدة", "بشار الفايز", "قصي القضاة"];
+  
+  const topSponsors = useMemo(() => {
+    let list = sponsors.map(s => ({ name: s.name, score: s.repairs * 5000, label: 'دينار مساهمات', type: 'sponsor', verified: true }));
+    return list.sort((a, b) => b.score - a.score).slice(0, 20);
+  }, [sponsors]);
+
+  const topCitizens = useMemo(() => {
+    const grouped = donations.reduce((acc, d) => {
+      if (d.anonymousName) return acc; 
+      const name = d.donorName || "مجهول";
+      if (!acc[name]) acc[name] = { name, score: 0, label: 'دينار', type: 'citizen', verified: true };
+      acc[name].score += Number(d.amount);
+      return acc;
+    }, {});
+    let list = Object.values(grouped);
+    if (list.length < 20) {
+      mockNames.slice(0, 20 - list.length).forEach((name, i) => {
+        list.push({ name, score: Math.floor(Math.random() * 500) + 50, label: 'دينار', type: 'citizen', verified: false });
+      });
+    }
+    return list.sort((a,b) => b.score - a.score).slice(0, 20);
+  }, [donations, mockNames]);
+
+  const topTeams = useMemo(() => {
+    let list = teams.map(t => ({ name: t.teamName, score: t.seasonPoints || Math.floor(Math.random() * 200), label: 'نقطة', type: 'team', verified: true }));
+    if (list.length < 20) {
+      const mockTeams = ["فريق عون", "سواعد البلقاء", "همة إربد", "نشامى الزرقاء", "شباب الكرك", "رواد العمل", "فرسان المفرق"];
+      mockTeams.slice(0, 20 - list.length).forEach((name) => {
+        list.push({ name, score: Math.floor(Math.random() * 150) + 20, label: 'نقطة', type: 'team', verified: false });
+      });
+    }
+    return list.sort((a, b) => b.score - a.score).slice(0, 20);
+  }, [teams]);
+
+  const topVolunteers = useMemo(() => {
+    let list = mockNames.map(name => ({ name, score: Math.floor(Math.random() * 300) + 10, label: 'نقطة تطوع', type: 'volunteer', verified: Math.random() > 0.5 }));
+    return list.sort((a, b) => b.score - a.score).slice(0, 20);
+  }, [mockNames]);
+
+  const topReporters = useMemo(() => {
+    let list = [];
+    if (user) {
+       const userReports = reports.filter(r => r.userId === user.uid).length;
+       if (userReports > 0) list.push({ name: "أنت (حسابك الحالي)", score: userReports, label: 'بلاغ موثق', type: 'reporter', verified: true, isMe: true });
+    }
+    mockNames.slice(0, 19).forEach((name) => {
+      list.push({ name, score: Math.floor(Math.random() * 15) + 2, label: 'بلاغ موثق', type: 'reporter', verified: true });
+    });
+    return list.sort((a, b) => b.score - a.score).slice(0, 20);
+  }, [reports, user, mockNames]);
+
+  const tabs = [
+    { id: 'sponsors', title: 'كبار الرعاة', icon: <Building2 size={18}/>, data: topSponsors },
+    { id: 'citizens', title: 'فرسان العطاء', icon: <Wallet size={18}/>, data: topCitizens },
+    { id: 'teams', title: 'أبطال التطوع (فرق)', icon: <Users size={18}/>, data: topTeams },
+    { id: 'volunteers', title: 'نجوم المجتمع (أفراد)', icon: <Star size={18}/>, data: topVolunteers },
+    { id: 'reporters', title: 'حراس الطريق', icon: <Camera size={18}/>, data: topReporters },
+  ];
+
+  const currentTabData = tabs.find(t => t.id === activeTab).data;
+
+  const userRank = useMemo(() => {
+    if (!user) return { rank: '---', score: 0 };
+    if (activeTab === 'reporters') {
+      const myIndex = currentTabData.findIndex(i => i.isMe);
+      return myIndex !== -1 ? { rank: myIndex + 1, score: currentTabData[myIndex].score } : { rank: '42', score: 0 };
+    }
+    return { rank: Math.floor(Math.random() * 50) + 21, score: Math.floor(Math.random() * 50) };
+  }, [activeTab, currentTabData, user]);
+
+  return (
+    <div className="py-8 animate-in slide-in-from-left duration-500 pb-20">
+      <div className="flex items-center gap-5 mb-8">
+        <button onClick={onBack} className="p-4 bg-white rounded-[1.5rem] shadow-sm border border-slate-100 hover:bg-slate-50 transition-all"><ChevronLeft className="rotate-180" size={24}/></button>
+        <div>
+           <h2 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tighter">لوحة الشرف الوطنية</h2>
+           <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Jordan's Elite Contributors</p>
+        </div>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-8">
+         <div className="flex-1 order-2 lg:order-1">
+            <div className="flex overflow-x-auto scrollbar-hide gap-3 mb-6 pb-2">
+               {tabs.map(tab => (
+                 <button 
+                   key={tab.id} 
+                   onClick={() => setActiveTab(tab.id)}
+                   className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-sm transition-all whitespace-nowrap border-2 ${activeTab === tab.id ? 'border-amber-500 bg-amber-50 text-amber-700 shadow-sm' : 'border-transparent bg-white text-slate-500 hover:bg-slate-50'}`}
+                 >
+                   {tab.icon} {tab.title}
+                 </button>
+               ))}
+            </div>
+
+            <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl overflow-hidden">
+              {currentTabData.map((d, i) => (
+                <div key={i} className={`p-6 md:p-8 flex items-center justify-between border-b border-slate-50 last:border-0 transition-all group ${d.isMe ? 'bg-green-50/50' : 'hover:bg-slate-50/50'}`}>
+                  <div className="flex items-center gap-5 md:gap-8">
+                     <div className={`w-12 h-12 md:w-16 md:h-16 rounded-[1.2rem] md:rounded-[1.8rem] flex items-center justify-center font-black text-xl md:text-3xl shadow-sm shrink-0 ${i === 0 ? 'bg-amber-100 text-amber-600' : i === 1 ? 'bg-slate-200 text-slate-600' : i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-slate-50 text-slate-400'}`}>
+                       {i+1}
+                     </div>
+                     <div>
+                        <p className={`font-black text-lg md:text-2xl transition-colors ${d.isMe ? 'text-green-700' : 'text-slate-800'}`}>{d.name}</p>
+                        {d.verified && (
+                          <div className="flex items-center gap-1.5 text-green-600 text-[10px] md:text-xs font-black mt-1 bg-green-50 w-fit px-2 py-0.5 rounded-lg">
+                            <CheckCircle2 size={12}/> {d.type === 'sponsor' ? 'شريك استراتيجي' : 'حساب موثق'}
+                          </div>
+                        )}
+                     </div>
+                  </div>
+                  <div className="text-left shrink-0">
+                     <p className={`font-black text-2xl md:text-3xl ${d.type === 'sponsor' ? 'text-indigo-600' : 'text-amber-600'}`}>{d.score}</p>
+                     <p className="text-[10px] md:text-xs font-bold text-slate-400">{d.label}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+         </div>
+
+         <div className="lg:w-80 order-1 lg:order-2 shrink-0">
+            <div className="bg-slate-900 rounded-[2.5rem] p-8 text-center text-white sticky top-28 shadow-2xl relative overflow-hidden">
+               <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500 rounded-full blur-[80px] opacity-20"></div>
+               <div className="relative z-10">
+                 <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/20">
+                    <Trophy size={32} className="text-amber-400"/>
+                 </div>
+                 <h3 className="text-xl font-black mb-1">مركزك الحالي</h3>
+                 <p className="text-xs text-slate-400 font-medium mb-8">في تصنيف: {tabs.find(t => t.id === activeTab).title}</p>
+                 
+                 <div className="bg-white/5 border border-white/10 rounded-[1.5rem] p-6 mb-6">
+                    <p className="text-5xl font-black text-amber-400 mb-2">#{userRank.rank}</p>
+                    <p className="text-sm font-bold text-slate-300">بمجموع <span className="text-white">{userRank.score}</span> {currentTabData[0]?.label}</p>
+                 </div>
+
+                 {!user && (
+                   <button onClick={() => window.location.reload()} className="w-full bg-green-600 text-white py-3 rounded-xl font-bold text-sm hover:bg-green-500 transition-colors">
+                     سجل دخولك للمنافسة
+                   </button>
+                 )}
+                 {user && (
+                   <p className="text-xs text-slate-400 font-bold">استمر في العطاء لترتقي في المراتب الوطنية!</p>
+                 )}
+               </div>
+            </div>
+         </div>
+      </div>
+    </div>
+  );
+};
+
 // --- 4. المكون الرئيسي App (يأتي في النهاية دائماً) ---
 
 const App = () => {
@@ -485,7 +800,6 @@ const App = () => {
   const [activeData, setActiveData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // إخفاء شاشة التحميل بعد ثانيتين
   useEffect(() => { setTimeout(() => setLoading(false), 2000); }, []);
 
   if (loading) return <LoadingScreen />;
@@ -497,22 +811,23 @@ const App = () => {
           <div className="bg-green-600 p-2 rounded-xl text-white"><TrendingUp size={24} /></div>
           <TareeqnaLogo />
         </div>
-        <button onClick={() => setView('landing')} className="p-2.5 bg-amber-50 text-amber-600 rounded-xl"><Trophy size={20}/></button>
+        <button onClick={() => setView('leaderboard')} className="p-2.5 bg-amber-50 text-amber-600 rounded-xl"><Trophy size={20}/></button>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 pb-32 pt-6">
         {view === 'landing' && <LandingView setView={setView} reports={reports} sponsors={SPONSORS} />}
         {view === 'roads' && <div className="space-y-6"><h2 className="text-2xl font-black">الشوارع</h2><div className="grid gap-6">{reports.filter(r => r.type === 'road').map(item => <DetailedCard key={item.id} item={item} onDonate={() => { setActiveData(item); setView('payment'); }} onInfo={() => { setActiveData(item); setView('detail'); }} />)}</div></div>}
         {view === 'stadiums' && <div className="space-y-6"><h2 className="text-2xl font-black">الملاعب</h2><div className="grid gap-6">{reports.filter(r => r.type === 'stadium').map(item => <DetailedCard key={item.id} item={item} onDonate={() => { setActiveData(item); setView('payment'); }} onInfo={() => { setActiveData(item); setView('detail'); }} />)}</div></div>}
-        {view === 'volunteering' && <VolunteeringHub teams={teams} user={user} onBack={() => setView('landing')} setView={setView} setActiveData={setActiveData} />}
+        {view === 'volunteering' && <VolunteeringHub teams={teams} user={user} onBack={() => setView('landing')} setView={setView} setActiveData={setActiveData} setTeams={setTeams} />}
         {view === 'join-team' && <JoinTeamForm team={activeData} onBack={() => setView('volunteering')} onSuccess={() => setView('volunteering')} />}
-        {view === 'create-team' && <VolunteeringHub teams={teams} user={user} onBack={() => setView('volunteering')} setView={setView} setActiveData={setActiveData} initialMode="create" />}
+        {view === 'create-team' && <VolunteeringHub teams={teams} user={user} onBack={() => setView('volunteering')} setView={setView} setActiveData={setActiveData} initialMode="create" setTeams={setTeams} />}
         {view === 'detail' && <DetailView item={activeData} onBack={() => setView('landing')} onDonate={() => setView('payment')} />}
         {view === 'payment' && <PaymentSimulation item={activeData} onBack={() => setView('detail')} onSuccess={() => setView('landing')} />}
         {view === 'partner-portal' && <PartnerLogin onLogin={() => setView('odoo-dashboard')} onBack={() => setView('landing')} />}
         {view === 'odoo-dashboard' && <OdooDashboard onLogout={() => setView('landing')} />}
         {view === 'report' && <CameraReportView onComplete={() => setView('landing')} user={user} />}
         {view === 'donate' && <DonateUnifiedView reports={reports} onDonate={(item) => { setActiveData(item); setView('payment'); }} />}
+        {view === 'leaderboard' && <LeaderboardView donations={[]} reports={reports} teams={teams} sponsors={SPONSORS} user={user} onBack={() => setView('landing')} />}
       </main>
 
       <Footer setView={setView} />
